@@ -19,7 +19,10 @@ Checks: >
   
   -modernize-use-trailing-return-type,
   -llvm-header-guard,
-  -bugprone-easily-swappable-parameters
+  -bugprone-easily-swappable-parameters,
+  -misc-non-private-member-variables-in-classes,
+  -hicpp-move-const-arg,
+  -performance-move-const-arg
 WarningsAsErrors: '*'
 
 CheckOptions:
@@ -42,7 +45,7 @@ CheckOptions:
   - key: readability-identifier-naming.MemberCase
     value: 'lower_case'
   - key: readability-identifier-naming.MethodCase
-    value: 'CamelCase'
+    value: 'lower_case'
   - key: readability-identifier-naming.NamespaceCase
     value: 'lower_case'
   - key: readability-identifier-naming.ParameterCase
