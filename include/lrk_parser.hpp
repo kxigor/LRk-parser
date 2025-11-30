@@ -39,7 +39,7 @@ class LrkParser {
 
     std::size_t rule_idx{};
     std::size_t dot_pose{};
-    std::size_t lookahead_idx{};
+    std::size_t actpref{};
   };
 
   struct SituationHash {
@@ -56,7 +56,7 @@ class LrkParser {
 
   struct Grammar {
     /*======== Constants =========*/
-    static constexpr const CharT kStartChar = CharT{'@'};
+    static constexpr const CharT kStarSym = CharT{'@'};
     static constexpr const StringViewT kArrow = "->";
     static constexpr const std::size_t kArrowPos = 1;
     static constexpr const std::size_t kMinSize = 1 + kArrow.size();
@@ -72,7 +72,7 @@ class LrkParser {
 
       grammar.throw_if_wrong_terminal_nontermianls();
 
-      grammar.add_rule(kStartChar, {start});
+      grammar.add_rule(kStarSym, {start});
 
       for (const auto& rule_str : rules_str) {
         grammar.add_rule(rule_from_str(rule_str));
@@ -80,7 +80,32 @@ class LrkParser {
       return grammar;
     }
 
+    /*== Symbol classification ===*/
+    [[nodiscard]] bool is_terminal(CharT sym) const noexcept {
+      return terminals.contains(sym);
+    }
+
+    [[nodiscard]] bool is_nonterminal(CharT sym) const noexcept {
+      return nonterminals.contains(sym);
+    }
+
+    /*======= Rule lookup ========*/
+    [[nodiscard]] bool is_rules_exists(CharT sym) const noexcept {
+      return lhs_to_rule_idxs.contains(sym);
+    }
+
+    [[nodiscard]] const VectorT<std::size_t>& get_rules_idxs(
+        CharT sym) const noexcept {
+      return lhs_to_rule_idxs.at(sym);
+    }
+
+    [[nodiscard]] const Rule& get_rule_by_idx(
+        std::size_t rule_idx) const noexcept {
+      return rules[rule_idx];
+    }
+
     /*========== Impls ===========*/
+   private:
     static Rule rule_from_str(const StringT& rule_str) {
       return Rule{.lhs = rule_str[0],
                   .rhs = {rule_str.begin() + kMinSize, rule_str.end()}};
@@ -104,7 +129,7 @@ class LrkParser {
     }
 
     void throw_if_wrong_terminal_nontermianls() const {
-      if (terminals.contains(kStartChar) or nonterminals.contains(kStartChar)) {
+      if (terminals.contains(kStarSym) or nonterminals.contains(kStarSym)) {
         throw std::logic_error(
             "the @ symbol is reserved by the grammar, it cannot be used");
       }
@@ -157,6 +182,7 @@ class LrkParser {
     }
 
     /*======= Data fields ========*/
+   public:
     UsetT<CharT> terminals;
     UsetT<CharT> nonterminals;
     VectorT<Rule> rules;
@@ -181,56 +207,104 @@ class LrkParser {
   LrkParser& operator=(LrkParser&& /*unused*/) noexcept = default;
 
   /*===================== Parser Interface =====================*/
-  void fit(Grammar grammar) {
+  void fit(Grammar grammar, std::size_t k) {
     grammar_ = std::move(grammar);
+    k_ = k;
 
-    build_all_sets_situations();
+    initialize_first_k_sets();
+    compute_first_k_fixed_point();
   }
 
   [[nodiscard]] bool predict(const StringT& word);
 
  private:
   /*========================== Impls ===========================*/
-  void build_all_sets_situations() {
-    const auto kEmptyIdx = add_string("");
-
-    UsetT<std::size_t> visited_actpref_idx;
-    DequeT<std::size_t> actpref_idx_to_visited;
-
-    actpref_idx_to_visited.emplace_back(kEmptyIdx);
-
-    while (not actpref_idx_to_visited.empty()) {
-      auto curr_actpref_idx = actpref_idx_to_visited.front();
-      actpref_idx_to_visited.pop_front();
-
-      if (visited_actpref_idx.contains(curr_actpref_idx)) {
-        continue;
-      }
-      visited_actpref_idx.emplace(curr_actpref_idx);
-      build_one_set_situations(curr_actpref_idx);
-
-      for (const auto& sym : grammar_.get_all_symbols_range()) {
-        auto actpref_idx = add_string(idx_to_string_[curr_actpref_idx] + sym);
-        actpref_idx_to_visited.emplace_back(actpref_idx);
-      }
+  void initialize_first_k_sets() {
+    for (const auto& terminal : grammar_.terminals) {
+      first_k_[terminal] = {{terminal}};
     }
   }
 
-  void build_one_set_situations(std::size_t string_idx) {}
+  void compute_first_k_fixed_point() {
+    while (update_first_k_in_single_iteration());
+  }
 
-  std::size_t add_string(StringT string) {
-    auto [it, emplace_status] =
-        string_to_idx_.try_emplace(string, idx_to_string_.size());
-    if (emplace_status) {
-      idx_to_string_.emplace_back(std::move(string));
+  bool update_first_k_in_single_iteration() {
+    bool changed = false;
+    for (const auto& rule : grammar_.rules) {
+      auto rhs_first_k = compute_first_k_for_rhs(rule);
+      changed |= update_lhs_first_k_if_changed(rule, rhs_first_k);
     }
-    return it->second;
+    return changed;
+  }
+
+  [[nodiscard]] UsetT<StringT> compute_first_k_for_rhs(const Rule& rule) {
+    UsetT<StringT> rhs_first_k_result = {StringT{}};
+
+    for (const auto& sym : rule.rhs) {
+      auto sym_first_k = first_k_[sym];
+      rhs_first_k_result = concat_k_sets(rhs_first_k_result, sym_first_k);
+    }
+
+    return rhs_first_k_result;
+  }
+
+  bool update_lhs_first_k_if_changed(const Rule& rule,
+                                     const UsetT<StringT>& rhs_first_k) {
+    auto& lhs_first_k = first_k_[rule.lhs];
+    const auto kSizeBefore = lhs_first_k.size();
+    union_k_sets(lhs_first_k, rhs_first_k);
+    const auto kSizeAfter = lhs_first_k.size();
+    return kSizeBefore != kSizeAfter;
+  }
+
+  [[nodiscard]] UsetT<StringT> concat_k_sets(const UsetT<StringT>& lhs_set,
+                                             const UsetT<StringT>& rhs_set) {
+    UsetT<StringT> result;
+    for (const auto& lhs : lhs_set) {
+      if (lhs.size() >= k_) {
+        result.emplace(lhs.substr(0, k_));
+        continue;
+      }
+      for (const auto& rhs : rhs_set) {
+        StringT added = lhs + rhs;
+        if (added.size() > k_) {
+          added.resize(k_);
+        }
+        result.emplace(std::move(added));
+      }
+    }
+    return result;
+  }
+
+  void union_k_sets(UsetT<StringT>& lhs_set, const UsetT<StringT>& rhs_set) {
+    for (const auto& rhs : rhs_set) {
+      lhs_set.emplace(rhs);
+    }
+  }
+
+  UsetT<StringT> compute_first_k_of_str(const StringT& str) {
+    UsetT<StringT> result;
+    for (const auto& sym : str) {
+      result = concat_k_sets(result, first_k_[sym]);
+    }
+    return result;
+  }
+
+  void create_initial_state() {
+
+  }
+
+  void compute_goto_state() {
+
   }
 
   /*======================= Data fields ========================*/
   Grammar grammar_;
-  UmapT<std::size_t, Situations> actpref_to_situations;
-  VectorT<StringT> idx_to_string_;
-  UmapT<StringT, std::size_t> string_to_idx_;
+  UmapT<StringT, Situations> actpref_to_situations;
+  VectorT<StringT> actpref_pool_;
+
+  std::size_t k_{};
+  UmapT<CharT, UsetT<StringT>> first_k_{};
 };
 }  // namespace lrk_parser
