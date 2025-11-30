@@ -39,7 +39,7 @@ class LrkParser {
 
     std::size_t rule_idx{};
     std::size_t dot_pose{};
-    std::size_t actpref{};
+    StringT actpref{};
   };
 
   struct SituationHash {
@@ -213,6 +213,7 @@ class LrkParser {
 
     initialize_first_k_sets();
     compute_first_k_fixed_point();
+    create_initial_situations();
   }
 
   [[nodiscard]] bool predict(const StringT& word);
@@ -284,20 +285,65 @@ class LrkParser {
   }
 
   UsetT<StringT> compute_first_k_of_str(const StringT& str) {
-    UsetT<StringT> result;
+    UsetT<StringT> result = {StringT{}};
     for (const auto& sym : str) {
       result = concat_k_sets(result, first_k_[sym]);
     }
     return result;
   }
 
-  void create_initial_state() {
-
+  void create_initial_situations() {
+    const auto& init_rule_idxs = grammar_.get_rules_idxs(Grammar::kStarSym);
+    auto& init_situations = actpref_to_situations[""];
+    for (const auto& rule_idx : init_rule_idxs) {
+      const auto& rule = grammar_.rules[rule_idx];
+      init_situations.emplace(
+          Situation{.rule_idx = rule_idx, .dot_pose = 0, .actpref = ""});
+    }
+    closure_initial_situations();
   }
 
-  void compute_goto_state() {
+  void closure_initial_situations() {
+    auto& init_situations = actpref_to_situations[""];
 
+    DequeT<Situation> queue;
+    for (const auto& situation : init_situations) {
+      queue.emplace_front(situation);
+    }
+
+    while (not queue.empty()) {
+      auto [rule_idx, dot_pose, actpref] = queue.back();
+      queue.pop_back();
+      const auto& rhs = grammar_.rules[rule_idx].rhs;
+      if (dot_pose >= rhs.size()) {
+        continue;
+      }
+      const auto& sym = rhs[dot_pose];
+      if (not grammar_.is_nonterminal(sym)) {
+        continue;
+      }
+      auto alpha = rhs.substr(dot_pose + 1);
+      include_all_situations(queue, sym, alpha + actpref);
+    }
   }
+
+  void include_all_situations(DequeT<Situation>& queue, CharT lhs,
+                              const StringT& actpref) {
+    auto& init_situations = actpref_to_situations[""];
+
+    auto firsk_k = compute_first_k_of_str(actpref);
+    for (const auto& rule_idx : grammar_.get_rules_idxs(lhs)) {
+      for (const auto& x : firsk_k) {
+        Situation new_sit = {.rule_idx = rule_idx, .dot_pose = 0, .actpref = x};
+        auto [it, emplace_status] = init_situations.emplace(new_sit);
+        if (emplace_status) {
+          queue.emplace_front(new_sit);
+        }
+      }
+    }
+  }
+
+  void compute_goto_situations() {}
 
   /*======================= Data fields ========================*/
   Grammar grammar_;
