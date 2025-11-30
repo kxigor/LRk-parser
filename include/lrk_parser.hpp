@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <deque>
 #include <format>
 #include <functional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -28,7 +30,13 @@ class LrkParser {
   template <typename T, typename U, typename H = std::hash<T>>
   using UmapT = std::unordered_map<T, U, H>;
 
+  template <typename T>
+  using DequeT = std::deque<T>;
+
   struct Situation {
+    [[nodiscard]] bool operator==(const Situation& /*unused*/) const noexcept =
+        default;
+
     std::size_t rule_idx{};
     std::size_t dot_pose{};
     std::size_t lookahead_idx{};
@@ -86,6 +94,13 @@ class LrkParser {
       const std::size_t kNewRuleIdx = rules.size();
       lhs_to_rule_idxs.emplace(rule.lhs, kNewRuleIdx);
       rules.emplace_back(std::move(rule));
+    }
+
+    auto get_all_symbols_range() {
+      return all_sets | std::views::transform([](auto s) -> const auto& {
+               return s.get();
+             }) |
+             std::views::join;
     }
 
     void throw_if_wrong_terminal_nontermianls() const {
@@ -146,6 +161,76 @@ class LrkParser {
     UsetT<CharT> nonterminals;
     VectorT<Rule> rules;
     UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs;
+
+    VectorT<std::reference_wrapper<const UsetT<CharT>>> all_sets{
+        std::cref(terminals), std::cref(nonterminals)};
   };
+
+  /*================= Consturctors/Destructors =================*/
+  LrkParser() noexcept = default;
+
+  LrkParser(const LrkParser& /*unused*/) = default;
+
+  LrkParser(LrkParser&& /*unused*/) noexcept = default;
+
+  ~LrkParser() noexcept = default;
+
+  /*======================= Assignments ========================*/
+  LrkParser& operator=(const LrkParser& /*unused*/) = default;
+
+  LrkParser& operator=(LrkParser&& /*unused*/) noexcept = default;
+
+  /*===================== Parser Interface =====================*/
+  void fit(Grammar grammar) {
+    grammar_ = std::move(grammar);
+
+    build_all_sets_situations();
+  }
+
+  [[nodiscard]] bool predict(const StringT& word);
+
+ private:
+  /*========================== Impls ===========================*/
+  void build_all_sets_situations() {
+    const auto kEmptyIdx = add_string("");
+
+    UsetT<std::size_t> visited_actpref_idx;
+    DequeT<std::size_t> actpref_idx_to_visited;
+
+    actpref_idx_to_visited.emplace_back(kEmptyIdx);
+
+    while (not actpref_idx_to_visited.empty()) {
+      auto curr_actpref_idx = actpref_idx_to_visited.front();
+      actpref_idx_to_visited.pop_front();
+
+      if (visited_actpref_idx.contains(curr_actpref_idx)) {
+        continue;
+      }
+      visited_actpref_idx.emplace(curr_actpref_idx);
+      build_one_set_situations(curr_actpref_idx);
+
+      for (const auto& sym : grammar_.get_all_symbols_range()) {
+        auto actpref_idx = add_string(idx_to_string_[curr_actpref_idx] + sym);
+        actpref_idx_to_visited.emplace_back(actpref_idx);
+      }
+    }
+  }
+
+  void build_one_set_situations(std::size_t string_idx) {}
+
+  std::size_t add_string(StringT string) {
+    auto [it, emplace_status] =
+        string_to_idx_.try_emplace(string, idx_to_string_.size());
+    if (emplace_status) {
+      idx_to_string_.emplace_back(std::move(string));
+    }
+    return it->second;
+  }
+
+  /*======================= Data fields ========================*/
+  Grammar grammar_;
+  UmapT<std::size_t, Situations> actpref_to_situations;
+  VectorT<StringT> idx_to_string_;
+  UmapT<StringT, std::size_t> string_to_idx_;
 };
 }  // namespace lrk_parser
