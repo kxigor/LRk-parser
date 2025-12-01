@@ -294,22 +294,19 @@ class LrkParser {
 
   void create_initial_situations() {
     const auto& init_rule_idxs = grammar_.get_rules_idxs(Grammar::kStarSym);
-    auto& init_situations = actpref_to_situations[""];
+    auto& init_situations = actpref_to_situations[StringT{}];
     for (const auto& rule_idx : init_rule_idxs) {
       const auto& rule = grammar_.rules[rule_idx];
       init_situations.emplace(
-          Situation{.rule_idx = rule_idx, .dot_pose = 0, .actpref = ""});
+          Situation{.rule_idx = rule_idx, .dot_pose = 0, .actpref = StringT{}});
     }
-    closure_initial_situations();
+    init_situations = closure(std::move(init_situations));
   }
 
-  void closure_initial_situations() {
-    auto& init_situations = actpref_to_situations[""];
+  Situations closure(Situations kernal_set) {
+    Situations result = std::move(kernal_set);
 
-    DequeT<Situation> queue;
-    for (const auto& situation : init_situations) {
-      queue.emplace_front(situation);
-    }
+    DequeT<Situation> queue{result.begin(), result.end()};
 
     while (not queue.empty()) {
       auto [rule_idx, dot_pose, actpref] = queue.back();
@@ -318,32 +315,50 @@ class LrkParser {
       if (dot_pose >= rhs.size()) {
         continue;
       }
-      const auto& sym = rhs[dot_pose];
-      if (not grammar_.is_nonterminal(sym)) {
+      const auto& B = rhs[dot_pose];
+      if (not grammar_.is_nonterminal(B)) {
         continue;
       }
-      auto alpha = rhs.substr(dot_pose + 1);
-      include_all_situations(queue, sym, alpha + actpref);
-    }
-  }
+      auto beta = rhs.substr(dot_pose + 1);
 
-  void include_all_situations(DequeT<Situation>& queue, CharT lhs,
-                              const StringT& actpref) {
-    auto& init_situations = actpref_to_situations[""];
+      auto firsk_k = compute_first_k_of_str(beta + actpref);
 
-    auto firsk_k = compute_first_k_of_str(actpref);
-    for (const auto& rule_idx : grammar_.get_rules_idxs(lhs)) {
-      for (const auto& x : firsk_k) {
-        Situation new_sit = {.rule_idx = rule_idx, .dot_pose = 0, .actpref = x};
-        auto [it, emplace_status] = init_situations.emplace(new_sit);
-        if (emplace_status) {
-          queue.emplace_front(new_sit);
+      for (const auto& rule_B_idx : grammar_.get_rules_idxs(B)) {
+        for (const auto& x : firsk_k) {
+          Situation new_sit = {
+              .rule_idx = rule_B_idx, .dot_pose = 0, .actpref = x};
+          auto [it, emplace_status] = result.emplace(new_sit);
+          if (emplace_status) {
+            queue.emplace_front(new_sit);
+          }
         }
       }
     }
+
+    return result;
   }
 
-  void compute_goto_situations() {}
+  Situations compute_go_situation(const Situations& I, CharT X) {
+    Situations kernel_situations;
+
+    for(const auto&[rule_idx, dot_pose, actpref] : I) {
+      const auto& rhs = grammar_.rules[rule_idx].rhs;
+      if(dot_pose >= rhs.size() or X != rhs[dot_pose]) {
+        continue;
+      }
+      kernel_situations.emplace(
+        Situation {
+          .rule_idx = rule_idx,
+          .dot_pose = dot_pose + 1,
+          .actpref = actpref
+        }
+      );
+    }
+
+    kernel_situations = closure(std::move(kernel_situations));
+
+    return kernel_situations;
+  }
 
   /*======================= Data fields ========================*/
   Grammar grammar_;
