@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <deque>
 #include <format>
@@ -105,6 +106,13 @@ class LrkParser {
     }
 
     /*========== Impls ===========*/
+    [[nodiscard]] auto get_all_symbols_range() {
+      return all_sets | std::views::transform([](auto s) -> const auto& {
+               return s.get();
+             }) |
+             std::views::join;
+    }
+
    private:
     static Rule rule_from_str(const StringT& rule_str) {
       return Rule{.lhs = rule_str[0],
@@ -119,13 +127,6 @@ class LrkParser {
       const std::size_t kNewRuleIdx = rules.size();
       lhs_to_rule_idxs.emplace(rule.lhs, kNewRuleIdx);
       rules.emplace_back(std::move(rule));
-    }
-
-    auto get_all_symbols_range() {
-      return all_sets | std::views::transform([](auto s) -> const auto& {
-               return s.get();
-             }) |
-             std::views::join;
     }
 
     void throw_if_wrong_terminal_nontermianls() const {
@@ -192,6 +193,30 @@ class LrkParser {
         std::cref(terminals), std::cref(nonterminals)};
   };
 
+  using StateIdT = std::size_t;
+
+  struct TransitionKey {
+    [[nodiscard]] bool operator==(const TransitionKey& other) const = default;
+
+    StateIdT current_state_id;
+    CharT symbol;
+  };
+
+  struct TransitionKeyHash {
+    [[nodiscard]] std::size_t operator()(
+        const TransitionKey& tkey) const noexcept {
+      // NOLINTBEGIN
+      std::size_t seed = 0;
+      seed ^= tkey.current_state_id + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed ^= static_cast<std::size_t>(tkey.symbol) + 0x9e3779b9 + (seed << 6) +
+              (seed >> 2);
+      // NOLINTEND
+      return seed;
+    }
+  };
+
+  using GotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
+
   /*================= Consturctors/Destructors =================*/
   LrkParser() noexcept = default;
 
@@ -213,7 +238,6 @@ class LrkParser {
 
     initialize_first_k_sets();
     compute_first_k_fixed_point();
-    create_initial_situations();
   }
 
   [[nodiscard]] bool predict(const StringT& word);
@@ -259,8 +283,8 @@ class LrkParser {
     return kSizeBefore != kSizeAfter;
   }
 
-  [[nodiscard]] UsetT<StringT> concat_k_sets(const UsetT<StringT>& lhs_set,
-                                             const UsetT<StringT>& rhs_set) {
+  [[nodiscard]] UsetT<StringT> concat_k_sets(
+      const UsetT<StringT>& lhs_set, const UsetT<StringT>& rhs_set) const {
     UsetT<StringT> result;
     for (const auto& lhs : lhs_set) {
       if (lhs.size() >= k_) {
@@ -278,32 +302,36 @@ class LrkParser {
     return result;
   }
 
-  void union_k_sets(UsetT<StringT>& lhs_set, const UsetT<StringT>& rhs_set) {
+  void union_k_sets(UsetT<StringT>& lhs_set,
+                    const UsetT<StringT>& rhs_set) const {
     for (const auto& rhs : rhs_set) {
       lhs_set.emplace(rhs);
     }
   }
 
-  UsetT<StringT> compute_first_k_of_str(const StringT& str) {
+  [[nodiscard]] UsetT<StringT> compute_first_k_of_str(
+      const StringT& str) const {
     UsetT<StringT> result = {StringT{}};
     for (const auto& sym : str) {
-      result = concat_k_sets(result, first_k_[sym]);
+      result = concat_k_sets(result, first_k_.at(sym));
     }
     return result;
   }
 
-  void create_initial_situations() {
+  [[nodiscard]] Situations create_initial_situations() const {
+    Situations init_situations;
+
     const auto& init_rule_idxs = grammar_.get_rules_idxs(Grammar::kStarSym);
-    auto& init_situations = actpref_to_situations[StringT{}];
+
     for (const auto& rule_idx : init_rule_idxs) {
       const auto& rule = grammar_.rules[rule_idx];
       init_situations.emplace(
           Situation{.rule_idx = rule_idx, .dot_pose = 0, .actpref = StringT{}});
     }
-    init_situations = closure(std::move(init_situations));
+    return closure(std::move(init_situations));
   }
 
-  Situations closure(Situations kernal_set) {
+  [[nodiscard]] Situations closure(Situations kernal_set) const {
     Situations result = std::move(kernal_set);
 
     DequeT<Situation> queue{result.begin(), result.end()};
@@ -338,21 +366,17 @@ class LrkParser {
     return result;
   }
 
-  Situations compute_go_situation(const Situations& I, CharT X) {
+  [[nodiscard]] Situations compute_go_situation(const Situations& I,
+                                                CharT X) const {
     Situations kernel_situations;
 
-    for(const auto&[rule_idx, dot_pose, actpref] : I) {
+    for (const auto& [rule_idx, dot_pose, actpref] : I) {
       const auto& rhs = grammar_.rules[rule_idx].rhs;
-      if(dot_pose >= rhs.size() or X != rhs[dot_pose]) {
+      if (dot_pose >= rhs.size() or X != rhs[dot_pose]) {
         continue;
       }
-      kernel_situations.emplace(
-        Situation {
-          .rule_idx = rule_idx,
-          .dot_pose = dot_pose + 1,
-          .actpref = actpref
-        }
-      );
+      kernel_situations.emplace(Situation{
+          .rule_idx = rule_idx, .dot_pose = dot_pose + 1, .actpref = actpref});
     }
 
     kernel_situations = closure(std::move(kernel_situations));
@@ -360,10 +384,54 @@ class LrkParser {
     return kernel_situations;
   }
 
+  void build_goto_table() {
+    Situations I0 = create_initial_situations();
+    auto I0_id = insert_sutiations(std::move(I0));
+
+    DequeT<StateIdT> queue;
+    queue.emplace_back(I0_id);
+
+    while (not queue.empty()) {
+      auto curr_sits_id = queue.front();
+      queue.pop_front();
+      auto& curr_sits = states_[curr_sits_id];
+
+      for (const auto& X : grammar_.get_all_symbols_range()) {
+        auto next_sits = compute_go_situation(curr_sits, X);
+        if (next_sits.empty()) {
+          continue;
+        }
+
+        auto [next_sits_id, is_next_sits_inserted] =
+            insert_sutiations(std::move(next_sits));
+
+        if (is_next_sits_inserted) {
+          queue.emplace_back(next_sits_id);
+        }
+
+        TransitionKey tkey = {.current_state_id = curr_sits_id, .symbol = X};
+
+        goto_table_.emplace(tkey, next_sits_id);
+      }
+    }
+  }
+
+  std::pair<StateIdT, bool> insert_sutiations(Situations I) {
+    auto [it, emplace_status] = state_set_to_id_.try_emplace(std::move(I));
+    if (emplace_status) {
+      it->second = states_.size();
+      states_.emplace_back(it->first);
+    }
+    return {it->second, emplace_status};
+  }
+
   /*======================= Data fields ========================*/
+
   Grammar grammar_;
-  UmapT<StringT, Situations> actpref_to_situations;
-  VectorT<StringT> actpref_pool_;
+  VectorT<Situations> states_;
+  UmapT<Situations, StateIdT> state_set_to_id_;
+
+  GotoTableT goto_table_;
 
   std::size_t k_{};
   UmapT<CharT, UsetT<StringT>> first_k_{};
