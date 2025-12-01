@@ -15,24 +15,15 @@
 #include <utility>
 #include <vector>
 
+#include "config.hpp"
+#include "grammar.hpp"
+#include "rule.hpp"
+
 namespace lrk_parser {
 class LrkParser {
+ public:
   /*====================== Usings/Helpers ======================*/
-  using CharT = char;
-  using StringT = std::basic_string<CharT>;
-  using StringViewT = std::basic_string_view<CharT>;
 
-  template <typename T>
-  using VectorT = std::vector<T>;
-
-  template <typename T, typename H = std::hash<T>>
-  using UsetT = std::unordered_set<T, H>;
-
-  template <typename T, typename U, typename H = std::hash<T>>
-  using UmapT = std::unordered_map<T, U, H>;
-
-  template <typename T>
-  using DequeT = std::deque<T>;
 
   struct Situation {
     [[nodiscard]] bool operator==(const Situation& /*unused*/) const noexcept =
@@ -45,153 +36,39 @@ class LrkParser {
 
   struct SituationHash {
     /*=========== Hash ===========*/
-    [[nodiscard]] std::size_t operator()(const Situation& sit) const noexcept;
+    [[nodiscard]] std::size_t operator()(const Situation& sit) const noexcept {
+      // NOLINTBEGIN
+      std::size_t seed = 0;
+      seed ^= sit.rule_idx + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed ^= sit.dot_pose + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed ^= std::hash<StringT>{}(sit.actpref) + 0x9e3779b9 + (seed << 6) +
+              (seed >> 2);
+      // NOLINTEND
+      return seed;
+    }
   };
 
   using Situations = UsetT<Situation, SituationHash>;
 
-  struct Rule {
-    CharT lhs{};
-    StringT rhs;
+  struct SituationsHash {
+    [[nodiscard]] std::size_t operator()(const Situations& set) const noexcept {
+      // NOLINTBEGIN
+      std::size_t seed = set.size();
+
+      SituationHash situation_hasher;
+
+      for (const auto& situation : set) {
+        std::size_t situation_hash = situation_hasher(situation);
+        seed ^= situation_hash + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      // NOLINTEND
+      return seed;
+    }
   };
 
-  struct Grammar {
-    /*======== Constants =========*/
-    static constexpr const CharT kStarSym = CharT{'@'};
-    static constexpr const StringViewT kArrow = "->";
-    static constexpr const std::size_t kArrowPos = 1;
-    static constexpr const std::size_t kMinSize = 1 + kArrow.size();
 
-    /*========= Factory ==========*/
-    static Grammar init_with_strs(StringT terminals, StringT nonterminals,
-                                  VectorT<StringT> rules_str, CharT start) {
-      prepare_rules_str(rules_str);
 
-      Grammar grammar = {
-          .terminals{terminals.begin(), terminals.end()},
-          .nonterminals{nonterminals.begin(), nonterminals.end()}};
 
-      grammar.throw_if_wrong_terminal_nontermianls();
-
-      grammar.add_rule(kStarSym, {start});
-
-      for (const auto& rule_str : rules_str) {
-        grammar.add_rule(rule_from_str(rule_str));
-      }
-      return grammar;
-    }
-
-    /*== Symbol classification ===*/
-    [[nodiscard]] bool is_terminal(CharT sym) const noexcept {
-      return terminals.contains(sym);
-    }
-
-    [[nodiscard]] bool is_nonterminal(CharT sym) const noexcept {
-      return nonterminals.contains(sym);
-    }
-
-    /*======= Rule lookup ========*/
-    [[nodiscard]] bool is_rules_exists(CharT sym) const noexcept {
-      return lhs_to_rule_idxs.contains(sym);
-    }
-
-    [[nodiscard]] const VectorT<std::size_t>& get_rules_idxs(
-        CharT sym) const noexcept {
-      return lhs_to_rule_idxs.at(sym);
-    }
-
-    [[nodiscard]] const Rule& get_rule_by_idx(
-        std::size_t rule_idx) const noexcept {
-      return rules[rule_idx];
-    }
-
-    /*========== Impls ===========*/
-    [[nodiscard]] auto get_all_symbols_range() {
-      return all_sets | std::views::transform([](auto s) -> const auto& {
-               return s.get();
-             }) |
-             std::views::join;
-    }
-
-   private:
-    static Rule rule_from_str(const StringT& rule_str) {
-      return Rule{.lhs = rule_str[0],
-                  .rhs = {rule_str.begin() + kMinSize, rule_str.end()}};
-    }
-
-    void add_rule(CharT lhs, StringT rhs) {
-      add_rule(Rule{.lhs = std::move(lhs), .rhs = std::move(rhs)});
-    }
-
-    void add_rule(Rule rule) {
-      const std::size_t kNewRuleIdx = rules.size();
-      lhs_to_rule_idxs.emplace(rule.lhs, kNewRuleIdx);
-      rules.emplace_back(std::move(rule));
-    }
-
-    void throw_if_wrong_terminal_nontermianls() const {
-      if (terminals.contains(kStarSym) or nonterminals.contains(kStarSym)) {
-        throw std::logic_error(
-            "the @ symbol is reserved by the grammar, it cannot be used");
-      }
-
-      for (const auto& terminal : terminals) {
-        if (nonterminals.contains(terminal)) {
-          throw std::logic_error(
-              "the set of terminal and non-terminal symbols cannot overlap");
-        }
-      }
-    }
-
-    void throw_if_wrong_rule_str(const StringT& rule_str) const {
-      /*TODO: improve code*/
-
-      if (rule_str.size() < kMinSize) {
-        throw std::logic_error("str rule requires a size of at least");
-      }
-      if (auto find_res = rule_str.find(kArrow); find_res != kArrowPos) {
-        throw std::logic_error("arrow missing or in the wrong place");
-      }
-      const auto& lhs_sym = rule_str[0];
-
-      if (terminals.contains(lhs_sym)) {
-        throw std::logic_error(
-            "there can't be a terminal on the left of the rule");
-      }
-
-      for (std::size_t i = 0; i < kArrowPos; ++i) {
-        if (not terminals.contains(rule_str[i]) and
-            not nonterminals.contains(rule_str[i])) {
-          throw std::logic_error("an unknown symbol has been encountered");
-        }
-      }
-
-      for (std::size_t i = kArrowPos + kArrow.size(); i < rule_str.size();
-           ++i) {
-        if (not terminals.contains(rule_str[i]) and
-            not nonterminals.contains(rule_str[i])) {
-          throw std::logic_error("an unknown symbol has been encountered");
-        }
-      }
-    }
-
-    static void prepare_rules_str(VectorT<StringT>& rules_str) {
-      for (auto& rule_str : rules_str) {
-        std::ranges::remove_if(rule_str,
-                               [](auto& sym) { return std::isspace(sym); });
-      }
-    }
-
-    /*======= Data fields ========*/
-   public:
-    UsetT<CharT> terminals;
-    UsetT<CharT> nonterminals;
-    VectorT<Rule> rules;
-    UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs;
-
-    VectorT<std::reference_wrapper<const UsetT<CharT>>> all_sets{
-        std::cref(terminals), std::cref(nonterminals)};
-  };
 
   using StateIdT = std::size_t;
 
@@ -215,7 +92,39 @@ class LrkParser {
     }
   };
 
+  enum class ActionType { Error, Shift, Reduce, Accept };
+
+  struct Action {
+    [[nodiscard]] bool operator==(const Action& other) const = default;
+
+    ActionType type = ActionType::Error;
+    std::size_t value = 0;
+  };
+
+  struct ActionKey {
+    [[nodiscard]] bool operator==(const ActionKey& other) const = default;
+
+    StateIdT state_id;
+    StringT lookahead;
+  };
+
+  struct ActionKeyHash {
+    [[nodiscard]] std::size_t operator()(const ActionKey& key) const noexcept {
+      // NOLINTBEGIN
+      std::size_t seed = 0;
+      seed ^= std::hash<StateIdT>{}(key.state_id) + 0x9e3779b9 + (seed << 6) +
+              (seed >> 2);
+      for (auto c : key.lookahead) {
+        seed ^= std::hash<CharT>{}(c) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      // NOLINTEND
+      return seed;
+    }
+  };
+
   using GotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
+
+  using ActionTableT = UmapT<ActionKey, Action, ActionKeyHash>;
 
   /*================= Consturctors/Destructors =================*/
   LrkParser() noexcept = default;
@@ -238,9 +147,76 @@ class LrkParser {
 
     initialize_first_k_sets();
     compute_first_k_fixed_point();
+    build_goto_table();
+    build_action_table();
   }
 
-  [[nodiscard]] bool predict(const StringT& word);
+  [[nodiscard]] bool predict(const StringT& word) {
+    std::vector<StateIdT> stack;
+    stack.reserve(word.size());
+    stack.push_back(0);
+
+    std::size_t cursor = 0;
+
+    volatile bool b = true;
+    while (b) {
+      StateIdT current_state = stack.back();
+
+      StringT u;
+      if (cursor < word.size()) {
+        u = word.substr(cursor, k_);
+      }
+
+      ActionKey key{current_state, u};
+
+      if (!action_table_.contains(key)) {
+        return false;
+      }
+
+      Action action = action_table_.at(key);
+
+      if (action.type == ActionType::Shift) {
+        if (cursor >= word.size()) {
+          return false;
+        }
+
+        stack.push_back(action.value);
+
+        ++cursor;
+      } else if (action.type == ActionType::Reduce) {
+        const auto& rule = grammar_.rules[action.value];
+
+        std::size_t symbols_to_pop = rule.rhs.size();
+
+        if (stack.size() < symbols_to_pop + 1) {
+          return false;
+        }
+
+        for (std::size_t i = 0; i < symbols_to_pop; ++i) {
+          stack.pop_back();
+        }
+
+        StateIdT state_top = stack.back();
+
+        TransitionKey goto_key{state_top, rule.lhs};
+
+        if (!goto_table_.contains(goto_key)) {
+          return false;
+        }
+
+        StateIdT next_state = goto_table_.at(goto_key);
+
+        stack.push_back(next_state);
+
+      } else if (action.type == ActionType::Accept) {
+        return cursor == word.size();
+      } else {
+        return false;
+      }
+    }
+
+    return false;
+  }
 
  private:
   /*========================== Impls ===========================*/
@@ -324,7 +300,6 @@ class LrkParser {
     const auto& init_rule_idxs = grammar_.get_rules_idxs(Grammar::kStarSym);
 
     for (const auto& rule_idx : init_rule_idxs) {
-      const auto& rule = grammar_.rules[rule_idx];
       init_situations.emplace(
           Situation{.rule_idx = rule_idx, .dot_pose = 0, .actpref = StringT{}});
     }
@@ -386,7 +361,8 @@ class LrkParser {
 
   void build_goto_table() {
     Situations I0 = create_initial_situations();
-    auto I0_id = insert_sutiations(std::move(I0));
+    auto [I0_id, I0_emplace_status] = insert_sutiations(std::move(I0));
+    assert(I0_emplace_status);
 
     DequeT<StateIdT> queue;
     queue.emplace_back(I0_id);
@@ -417,7 +393,8 @@ class LrkParser {
   }
 
   std::pair<StateIdT, bool> insert_sutiations(Situations I) {
-    auto [it, emplace_status] = state_set_to_id_.try_emplace(std::move(I));
+    auto [it, emplace_status] =
+        state_set_to_id_.try_emplace(std::move(I), StateIdT{});
     if (emplace_status) {
       it->second = states_.size();
       states_.emplace_back(it->first);
@@ -425,13 +402,71 @@ class LrkParser {
     return {it->second, emplace_status};
   }
 
-  /*======================= Data fields ========================*/
+  void build_action_table() {
+    for (std::size_t i = 0; i < states_.size(); ++i) {
+      const StateIdT current_state_id = i;
+      const auto& situations = states_[i];
 
+      for (const auto& sit : situations) {
+        const auto& rule = grammar_.rules[sit.rule_idx];
+
+        if (sit.dot_pose < rule.rhs.size()) {
+          const CharT next_sym = rule.rhs[sit.dot_pose];
+
+          if (grammar_.is_terminal(next_sym)) {
+            StringT tail = rule.rhs.substr(sit.dot_pose + 1);
+            auto eff_lookaheads = compute_first_k_of_str(tail + sit.actpref);
+
+            for (const auto& u : eff_lookaheads) {
+              if (u.empty() || u[0] != next_sym) {
+                continue;
+              }
+
+              TransitionKey tkey{current_state_id, next_sym};
+              if (goto_table_.contains(tkey)) {
+                StateIdT next_state = goto_table_.at(tkey);
+                add_action_checked(current_state_id, u,
+                                   Action{ActionType::Shift, next_state});
+              }
+            }
+          }
+        } else {
+          if (rule.lhs == Grammar::kStarSym) {
+            if (sit.actpref.empty()) {
+              add_action_checked(current_state_id, sit.actpref,
+                                 Action{ActionType::Accept, 0});
+            }
+          } else {
+            add_action_checked(current_state_id, sit.actpref,
+                               Action{ActionType::Reduce, sit.rule_idx});
+          }
+        }
+      }
+    }
+  }
+
+  void add_action_checked(StateIdT state, const StringT& lookahead,
+                          Action new_action) {
+    ActionKey key{state, lookahead};
+    if (action_table_.contains(key)) {
+      const auto& existing = action_table_.at(key);
+      if (existing == new_action) return;
+
+      throw std::runtime_error(std::format(
+          "LR(k) Conflict at state {}, lookahead '{}': existing type {}, new "
+          "type {}",
+          state, lookahead, (int)existing.type, (int)new_action.type));
+    }
+    action_table_[key] = new_action;
+  }
+
+  /*======================= Data fields ========================*/
   Grammar grammar_;
   VectorT<Situations> states_;
-  UmapT<Situations, StateIdT> state_set_to_id_;
+  UmapT<Situations, StateIdT, SituationsHash> state_set_to_id_;
 
   GotoTableT goto_table_;
+  ActionTableT action_table_;
 
   std::size_t k_{};
   UmapT<CharT, UsetT<StringT>> first_k_{};
