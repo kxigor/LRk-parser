@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -10,6 +11,7 @@
 namespace lrk_parser {
 using CharT = char;
 using StringT = std::basic_string<CharT>;
+
 using StringViewT = std::basic_string_view<CharT>;
 
 template <typename T>
@@ -23,5 +25,4 @@ using UmapT = std::unordered_map<T, U, H>;
 
 template <typename T>
 using DequeT = std::deque<T>;
-
 };  // namespace lrk_parser

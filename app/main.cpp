@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "lrk_parser/config.hpp"
 #include "lrk_parser/parser.hpp"
 
 using CharT = lrk_parser::CharT;

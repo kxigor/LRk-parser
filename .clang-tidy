@@ -22,7 +22,8 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -misc-non-private-member-variables-in-classes,
   -hicpp-move-const-arg,
-  -performance-move-const-arg
+  -performance-move-const-arg,
+  -readability-identifier-length
 WarningsAsErrors: '*'
 
 CheckOptions:

@@ -1,4 +1,7 @@
-add_library(lrk_parser parser.cpp)
+add_library(lrk_parser 
+  parser.cpp
+  grammar.cpp
+)
 
 target_link_libraries(lrk_parser
   PRIVATE
