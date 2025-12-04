@@ -10,8 +10,8 @@
 
 namespace lrk_parser::details {
 class CanonicalCollection {
- public:
   /*====================== Usings/Helpers ======================*/
+ public:
   using BaseGotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
   using StatesT = VectorT<details::Situations>;
   using StateSetToIdT =
@@ -20,9 +20,9 @@ class CanonicalCollection {
   /*================= Constructors/Destructors =================*/
   CanonicalCollection() = delete;
 
-  CanonicalCollection(const CanonicalCollection&) = delete;
+  CanonicalCollection(const CanonicalCollection&) = default;
 
-  CanonicalCollection(CanonicalCollection&&) = delete;
+  CanonicalCollection(CanonicalCollection&&) = default;
 
   CanonicalCollection(const Grammar& grammar, const FirstK& fist_k) {
     build_goto_table(grammar, fist_k);
@@ -30,9 +30,9 @@ class CanonicalCollection {
 
   /*======================= Assignments ========================*/
   CanonicalCollection& operator=(const CanonicalCollection& /*unused*/) =
-      delete;
+      default;
 
-  CanonicalCollection& operator=(CanonicalCollection&& /*unused*/) = delete;
+  CanonicalCollection& operator=(CanonicalCollection&& /*unused*/) = default;
 
   /*========================= Getters ==========================*/
   [[nodiscard]] const BaseGotoTableT& get_goto_table() const noexcept {
@@ -47,8 +47,8 @@ class CanonicalCollection {
     return state_set_to_id_;
   }
 
- private:
   /*========================== Impls ===========================*/
+ private:
   [[nodiscard]] details::Situations create_initial_situations(
       const Grammar& grammar, const FirstK& fist_k) const {
     details::Situations init_situations;

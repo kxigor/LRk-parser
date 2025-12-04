@@ -15,8 +15,8 @@
 
 namespace lrk_parser {
 class LrkParser {
- public:
   /*================= Consturctors/Destructors =================*/
+ public:
   LrkParser() noexcept = default;
 
   LrkParser(const LrkParser& /*unused*/) = default;
@@ -111,8 +111,8 @@ class LrkParser {
     return false;
   }
 
- private:
   /*======================= Data fields ========================*/
+ private:
   std::size_t k_{};
   details::Grammar grammar_;
   details::GotoTable goto_table_;

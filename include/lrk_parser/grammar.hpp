@@ -43,8 +43,8 @@ struct Grammar {
            std::ranges::views::join;
   }
 
- private:
   /*========== Impls ===========*/
+ private:
   static void prepare_rules_str(VectorT<StringT>& rules_str);
 
   [[nodiscard]] static details::Rule rule_from_str(const StringT& rule_str);

@@ -9,8 +9,8 @@
 
 namespace lrk_parser::details {
 class FirstK {
- public:
   /*================= Constructors/Destructors =================*/
+ public:
   FirstK() = delete;
 
   FirstK(const FirstK& /*unused*/) = default;
@@ -38,8 +38,8 @@ class FirstK {
     return result;
   }
 
- private:
   /*========================== Impls ===========================*/
+ private:
   void initialize_first_k_sets(const Grammar& grammar) {
     for (const auto& terminal : grammar.terminals) {
       first_k_[terminal] = {{terminal}};
