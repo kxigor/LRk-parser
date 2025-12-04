@@ -1,48 +1,97 @@
 #pragma once
 
+#include <cstddef>
+#include <format>
+#include <stdexcept>
+
+#include "canonical_collection.hpp"
+#include "config.hpp"
+#include "first_k.hpp"
+#include "grammar.hpp"
 #include "tables_base.hpp"
 
 namespace lrk_parser::details {
 class ActionTable {
+  /*====================== Usings/Helpers ======================*/
   using BaseActionTableT = UmapT<ActionKey, Action, ActionKeyHash>;
 
-  void build_action_table() {
-    for (std::size_t i = 0; i < states_.size(); ++i) {
-      const StateIdT current_state_id = i;
-      const auto& situations = states_[i];
+  /*================= Constructors/Destructors =================*/
+ public:
+  ActionTable() = default;
+
+  ActionTable(const Grammar& grammar, const FirstK& first_k,
+              const CanonicalCollection& lr_collection) {
+    build_action_table(grammar, first_k, lr_collection);
+  }
+
+  ActionTable(const ActionTable& /*unused*/) = default;
+
+  ActionTable(ActionTable&& /*unused*/) = default;
+
+  ~ActionTable() = default;
+
+  /*======================= Assignments ========================*/
+  ActionTable& operator=(const ActionTable& /*unused*/) = default;
+
+  ActionTable& operator=(ActionTable&& /*unused*/) = default;
+
+  /*===================== Table Operations =====================*/
+  [[nodiscard]] bool has_parse_action(const ActionKey& a_key) const {
+    return action_table_.contains(a_key);
+  }
+
+  [[nodiscard]] const details::Action& get_parse_action(
+      const ActionKey& a_key) const {
+    return action_table_.at(a_key);
+  }
+
+  /*========================== Impls ===========================*/
+ private:
+  void build_action_table(const Grammar& grammar, const FirstK& first_k,
+                          const CanonicalCollection& lr_collection) {
+    const auto& states = lr_collection.get_states();
+    const auto& goto_table = lr_collection.get_goto_table();
+
+    for (std::size_t i = 0; i < states.size(); ++i) {
+      const StateIdT kCurrentStateId = i;
+      const auto& situations = states[i];
 
       for (const auto& sit : situations) {
-        const auto& rule = grammar_.rules[sit.rule_idx];
+        const auto& rule = grammar.rules[sit.rule_idx];
 
         if (sit.dot_pose < rule.rhs.size()) {
-          const CharT next_sym = rule.rhs[sit.dot_pose];
+          const CharT kNextSym = rule.rhs[sit.dot_pose];
 
-          if (grammar_.is_terminal(next_sym)) {
-            StringT tail = rule.rhs.substr(sit.dot_pose + 1);
-            auto eff_lookaheads = compute_first_k_of_str(tail + sit.actpref);
+          if (grammar.is_terminal(kNextSym)) {
+            const StringT kTail = rule.rhs.substr(sit.dot_pose + 1);
+            auto eff_lookaheads = first_k.compute_first_k(kTail + sit.actpref);
 
             for (const auto& u : eff_lookaheads) {
-              if (u.empty() || u[0] != next_sym) {
+              if (u.empty() || u[0] != kNextSym) {
                 continue;
               }
 
-              TransitionKey tkey{current_state_id, next_sym};
-              if (goto_table_.contains(tkey)) {
-                StateIdT next_state = goto_table_.at(tkey);
-                add_action_checked(current_state_id, u,
-                                   Action{ActionType::Shift, next_state});
+              const TransitionKey kTKey{.current_state_id = kCurrentStateId,
+                                        .symbol = kNextSym};
+              if (goto_table.contains(kTKey)) {
+                const StateIdT kNextState = goto_table.at(kTKey);
+                add_action_checked(
+                    kCurrentStateId, u,
+                    Action{.type = ActionType::Shift, .value = kNextState});
               }
             }
           }
         } else {
           if (rule.lhs == Grammar::kStarSym) {
             if (sit.actpref.empty()) {
-              add_action_checked(current_state_id, sit.actpref,
-                                 Action{ActionType::Accept, 0});
+              add_action_checked(
+                  kCurrentStateId, sit.actpref,
+                  Action{.type = ActionType::Accept, .value = 0});
             }
           } else {
-            add_action_checked(current_state_id, sit.actpref,
-                               Action{ActionType::Reduce, sit.rule_idx});
+            add_action_checked(
+                kCurrentStateId, sit.actpref,
+                Action{.type = ActionType::Reduce, .value = sit.rule_idx});
           }
         }
       }
@@ -51,19 +100,22 @@ class ActionTable {
 
   void add_action_checked(StateIdT state, const StringT& lookahead,
                           Action new_action) {
-    ActionKey key{state, lookahead};
-    if (action_table_.contains(key)) {
-      const auto& existing = action_table_.at(key);
-      if (existing == new_action) return;
+    const ActionKey kAKey{.state_id = state, .lookahead = lookahead};
+    if (action_table_.contains(kAKey)) {
+      const auto& existing = action_table_.at(kAKey);
+      if (existing == new_action) {
+        return;
+      }
 
       throw std::runtime_error(std::format(
           "LR(k) Conflict at state {}, lookahead '{}': existing type {}, new "
           "type {}",
           state, lookahead, (int)existing.type, (int)new_action.type));
     }
-    action_table_[key] = new_action;
+    action_table_[kAKey] = new_action;
   }
 
+  /*======================= Data fields ========================*/
   BaseActionTableT action_table_;
 };
 }  // namespace lrk_parser::details

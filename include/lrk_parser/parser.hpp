@@ -2,23 +2,15 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
-#include <format>
-#include <functional>
-#include <stdexcept>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
+#include "action_table.hpp"
+#include "canonical_collection.hpp"
 #include "config.hpp"
 #include "first_k.hpp"
+#include "goto_table.hpp"
 #include "grammar.hpp"
 #include "rule.hpp"
-#include "situation.hpp"
-#include "goto_table.hpp"
-#include "action_table.hpp"
 #include "tables_base.hpp"
 
 namespace lrk_parser {
@@ -40,72 +32,76 @@ class LrkParser {
 
   /*===================== Parser Interface =====================*/
   void fit(Grammar grammar, std::size_t k) {
-    grammar_ = std::move(grammar);
     k_ = k;
+    grammar_ = std::move(grammar);
 
-    details::FirstK first_k(grammar_, k_);
-    build_goto_table();
-    build_action_table();
+    const details::FirstK kFirstK(grammar_, k_);
+    details::CanonicalCollection lr_collection(grammar_, kFirstK);
+
+    action_table_ = details::ActionTable(grammar_, kFirstK, lr_collection);
+    goto_table_ = details::GotoTable(std::move(lr_collection));
   }
 
-  [[nodiscard]] bool predict(const StringT& word) {
-    std::vector<StateIdT> stack;
+  [[nodiscard]] bool predict(const StringT& word) const {
+    VectorT<details::StateIdT> stack;
     stack.reserve(word.size());
     stack.push_back(0);
 
     std::size_t cursor = 0;
 
-    volatile bool b = true;
-    while (b) {
-      StateIdT current_state = stack.back();
+    const volatile bool kB = true;
+    while (kB) {
+      const details::StateIdT kCurrentState = stack.back();
 
       StringT u;
       if (cursor < word.size()) {
         u = word.substr(cursor, k_);
       }
 
-      ActionKey key{current_state, u};
+      const details::ActionKey kAKey{.state_id = kCurrentState, .lookahead = u};
 
-      if (!action_table_.contains(key)) {
+      if (not action_table_.has_parse_action(kAKey)) {
         return false;
       }
 
-      Action action = action_table_.at(key);
+      const details::Action kAction = action_table_.get_parse_action(kAKey);
 
-      if (action.type == ActionType::Shift) {
+      if (kAction.type == details::ActionType::Shift) {
         if (cursor >= word.size()) {
           return false;
         }
 
-        stack.push_back(action.value);
+        stack.push_back(kAction.value);
 
         ++cursor;
-      } else if (action.type == ActionType::Reduce) {
-        const auto& rule = grammar_.rules[action.value];
+      } else if (kAction.type == details::ActionType::Reduce) {
+        const auto& rule = grammar_.rules[kAction.value];
 
-        std::size_t symbols_to_pop = rule.rhs.size();
+        const std::size_t kSymsToPop = rule.rhs.size();
 
-        if (stack.size() < symbols_to_pop + 1) {
+        if (stack.size() < kSymsToPop + 1) {
           return false;
         }
 
-        for (std::size_t i = 0; i < symbols_to_pop; ++i) {
+        for (std::size_t i = 0; i < kSymsToPop; ++i) {
           stack.pop_back();
         }
 
-        StateIdT state_top = stack.back();
+        const details::StateIdT kStateTop = stack.back();
 
-        TransitionKey goto_key{state_top, rule.lhs};
+        const details::TransitionKey kGotoKey{.current_state_id = kStateTop,
+                                              .symbol = rule.lhs};
 
-        if (!goto_table_.contains(goto_key)) {
+        if (not goto_table_.has_goto_state(kGotoKey)) {
           return false;
         }
 
-        StateIdT next_state = goto_table_.at(goto_key);
+        const details::StateIdT kNextState =
+            goto_table_.get_goto_state(kGotoKey);
 
-        stack.push_back(next_state);
+        stack.push_back(kNextState);
 
-      } else if (action.type == ActionType::Accept) {
+      } else if (kAction.type == details::ActionType::Accept) {
         return cursor == word.size();
       } else {
         return false;
@@ -116,11 +112,10 @@ class LrkParser {
   }
 
  private:
-  /*========================== Impls ===========================*/
-
   /*======================= Data fields ========================*/
-  Grammar grammar_;
-
   std::size_t k_{};
+  details::Grammar grammar_;
+  details::GotoTable goto_table_;
+  details::ActionTable action_table_;
 };
 }  // namespace lrk_parser

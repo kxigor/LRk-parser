@@ -8,10 +8,11 @@
 #include "rule.hpp"
 
 namespace lrk_parser {
+namespace details {
 struct Grammar {
   /*======== Constants =========*/
   static constexpr const CharT kStarSym = CharT{'@'};
-  static constexpr const StringViewT kArrow = "->";
+  static constexpr const StringViewT kArrow = StringViewT{"->"};
   static constexpr const std::size_t kArrowPos = 1;
   static constexpr const std::size_t kMinSize = 1 + kArrow.size();
 
@@ -66,4 +67,8 @@ struct Grammar {
   VectorT<std::reference_wrapper<const UsetT<CharT>>> all_sets{
       std::cref(terminals), std::cref(nonterminals)};
 };
+}  // namespace details
+
+using Grammar = details::Grammar;
+
 }  // namespace lrk_parser

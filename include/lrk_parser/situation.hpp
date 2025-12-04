@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "config.hpp"
 
 namespace lrk_parser::details {

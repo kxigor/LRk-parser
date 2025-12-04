@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstddef>
+#include <utility>
+
 #include "config.hpp"
 #include "grammar.hpp"
 #include "rule.hpp"
@@ -19,13 +22,15 @@ class FirstK {
     compute_first_k_fixed_point(grammar);
   }
 
+  ~FirstK() = default;
+
   /*======================= Assignments ========================*/
   FirstK& operator=(const FirstK& /*unused*/) = default;
 
   FirstK& operator=(FirstK&& /*unused*/) = default;
 
-  [[nodiscard]] UsetT<StringT> compute_first_k_of_str(
-      const StringT& str) const {
+  /*==================== First_k Computation ===================*/
+  [[nodiscard]] UsetT<StringT> compute_first_k(const StringT& str) const {
     UsetT<StringT> result = {StringT{}};
     for (const auto& sym : str) {
       result = concat_k_sets(result, first_k_.at(sym));
@@ -42,7 +47,8 @@ class FirstK {
   }
 
   void compute_first_k_fixed_point(const Grammar& grammar) {
-    while (update_first_k_in_single_iteration(grammar));
+    while (update_first_k_in_single_iteration(grammar)) {
+    }
   }
 
   bool update_first_k_in_single_iteration(const Grammar& grammar) {
@@ -94,14 +100,15 @@ class FirstK {
     return result;
   }
 
-  void union_k_sets(UsetT<StringT>& lhs_set,
-                    const UsetT<StringT>& rhs_set) const {
+  static void union_k_sets(UsetT<StringT>& lhs_set,
+                           const UsetT<StringT>& rhs_set) {
     for (const auto& rhs : rhs_set) {
       lhs_set.emplace(rhs);
     }
   }
 
-  UmapT<CharT, UsetT<StringT>> first_k_{};
-  std::size_t k_;
+  /*======================= Data Fields ========================*/
+  std::size_t k_{};
+  UmapT<CharT, UsetT<StringT>> first_k_;
 };
 }  // namespace lrk_parser::details
