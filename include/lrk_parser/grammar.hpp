@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <ostream>
 #include <ranges>
 
 #include "config.hpp"
@@ -10,40 +11,57 @@
 namespace lrk_parser {
 namespace details {
 struct Grammar {
-  /*======== Constants =========*/
+  /*======================== Constants =========================*/
   static constexpr const CharT kStarSym = CharT{'@'};
   static constexpr const StringViewT kArrow = StringViewT{"->"};
   static constexpr const std::size_t kArrowPos = 1;
   static constexpr const std::size_t kMinSize = 1 + kArrow.size();
 
-  /*========= Factory ==========*/
+  /*================= Constructors/Destructors =================*/
+  Grammar() = default;
+
+  Grammar(const Grammar& /*unused*/) = default;
+
+  Grammar(Grammar&& /*unused*/) = default;
+
+  ~Grammar() = default;
+
+  /*======================= Assignments ========================*/
+  Grammar& operator=(const Grammar& /*unused*/) = default;
+
+  Grammar& operator=(Grammar&& /*unused*/) = default;
+
+  /*========================= Factory ==========================*/
   [[nodiscard]] static Grammar init_with_strs(StringT terminals,
                                               StringT nonterminals,
                                               VectorT<StringT> rules_str,
                                               CharT start);
 
-  /*== Symbol classification ===*/
+  /*========================== Output ==========================*/
+  friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar);
+
+  /*================== Symbol classification ===================*/
   [[nodiscard]] bool is_terminal(CharT sym) const noexcept;
 
   [[nodiscard]] bool is_nonterminal(CharT sym) const noexcept;
 
-  /*======= Rule lookup ========*/
+  [[nodiscard]] bool is_valid_symbol(CharT sym) const noexcept;
+
+  /*======================= Rule lookup ========================*/
   [[nodiscard]] bool is_rules_exists(CharT sym) const noexcept;
 
-  [[nodiscard]] const VectorT<std::size_t>& get_rules_idxs(
-      CharT sym) const noexcept;
+  [[nodiscard]] const VectorT<std::size_t>& get_rules_idxs(CharT sym) const;
 
   [[nodiscard]] const details::Rule& get_rule_by_idx(
       std::size_t rule_idx) const noexcept;
 
-  [[nodiscard]] auto get_all_symbols_range() const {
-    return all_sets | std::ranges::views::transform([](auto s) -> const auto& {
-             return s.get();
-           }) |
-           std::ranges::views::join;
-  }
+  [[nodiscard]] const VectorT<details::Rule>& get_rules() const noexcept;
 
-  /*========== Impls ===========*/
+  [[nodiscard]] const UsetT<CharT>& get_terminals() const noexcept;
+
+  [[nodiscard]] const UsetT<CharT>& get_nonterminals() const noexcept;
+
+  /*========================== Impls ===========================*/
  private:
   static void prepare_rules_str(VectorT<StringT>& rules_str);
 
@@ -57,16 +75,15 @@ struct Grammar {
 
   void throw_if_wrong_rule_str(const StringT& rule_str) const;
 
-  /*======= Data fields ========*/
- public:
+  /*======================= Data fields ========================*/
   UsetT<CharT> terminals;
   UsetT<CharT> nonterminals;
   VectorT<details::Rule> rules;
   UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs;
-
-  VectorT<std::reference_wrapper<const UsetT<CharT>>> all_sets{
-      std::cref(terminals), std::cref(nonterminals)};
 };
+
+std::ostream& operator<<(std::ostream& os, const Grammar& grammar);
+
 }  // namespace details
 
 using Grammar = details::Grammar;

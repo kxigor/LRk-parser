@@ -85,8 +85,8 @@ target_compile_options(project_options INTERFACE
 
   # --- Debug Configuration ---
   # Note: Aggressive warnings are included here to maximize code quality during development.
-  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>: ${GCC_DEBUG_COMPILE} ${GCC_AGGRESSIVE_COMPILE}>
-  $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>: ${MSVC_DEBUG_COMPILE}>
+  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>: ${GCC_DEBUG_COMPILE} ${GCC_AGGRESSIVE_COMPILE} -DUNIT_TESTS>
+  $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>: ${MSVC_DEBUG_COMPILE} /DUNIT_TESTS>
 
   # --- RelWithDebInfo Configuration ---
   $<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>: ${GCC_RELWITHDEB}>

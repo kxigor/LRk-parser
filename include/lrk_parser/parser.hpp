@@ -75,7 +75,7 @@ class LrkParser {
 
         ++cursor;
       } else if (kAction.type == details::ActionType::Reduce) {
-        const auto& rule = grammar_.rules[kAction.value];
+        const auto& rule = grammar_.get_rule_by_idx(kAction.value);
 
         const std::size_t kSymsToPop = rule.rhs.size();
 

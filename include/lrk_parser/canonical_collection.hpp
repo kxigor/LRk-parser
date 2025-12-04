@@ -72,7 +72,7 @@ class CanonicalCollection {
     while (not queue.empty()) {
       auto [rule_idx, dot_pose, actpref] = queue.back();
       queue.pop_back();
-      const auto& rhs = grammar.rules[rule_idx].rhs;
+      const auto& rhs = grammar.get_rule_by_idx(rule_idx).rhs;
       if (dot_pose >= rhs.size()) {
         continue;
       }
@@ -105,7 +105,7 @@ class CanonicalCollection {
     details::Situations kernel_situations;
 
     for (const auto& [rule_idx, dot_pose, actpref] : I) {
-      const auto& rhs = grammar.rules[rule_idx].rhs;
+      const auto& rhs = grammar.get_rule_by_idx(rule_idx).rhs;
       if (dot_pose >= rhs.size() or X != rhs[dot_pose]) {
         continue;
       }
@@ -118,8 +118,8 @@ class CanonicalCollection {
     return kernel_situations;
   }
 
-  void build_goto_table(const Grammar& grammar, const FirstK& fist_k) {
-    details::Situations I0 = create_initial_situations(grammar, fist_k);
+  void build_goto_table(const Grammar& grammar, const FirstK& first_k) {
+    details::Situations I0 = create_initial_situations(grammar, first_k);
     auto [I0_id, I0_emplace_status] = insert_sutiations(std::move(I0));
     assert(I0_emplace_status);
 
@@ -131,10 +131,10 @@ class CanonicalCollection {
       queue.pop_front();
       auto& curr_sits = states_[curr_sits_id];
 
-      for (const auto& X : grammar.get_all_symbols_range()) {
-        auto next_sits = compute_go_situation(grammar, fist_k, curr_sits, X);
+      auto process_symbol_transition = [&](const auto& X) {
+        auto next_sits = compute_go_situation(grammar, first_k, curr_sits, X);
         if (next_sits.empty()) {
-          continue;
+          return;
         }
 
         auto [next_sits_id, is_next_sits_inserted] =
@@ -147,6 +147,14 @@ class CanonicalCollection {
         TransitionKey tkey = {.current_state_id = curr_sits_id, .symbol = X};
 
         goto_table_.emplace(tkey, next_sits_id);
+      };
+
+      for (const auto& T : grammar.get_terminals()) {
+        process_symbol_transition(T);
+      }
+
+      for (const auto& N : grammar.get_nonterminals()) {
+        process_symbol_transition(N);
       }
     }
   }

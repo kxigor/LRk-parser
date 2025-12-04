@@ -9,6 +9,11 @@
 
 namespace lrk_parser::details {
 class FirstK {
+  /*========================= Frineds ==========================*/
+#ifdef UNIT_TESTS
+  friend class FirstKTestAccessor;
+#endif
+
   /*================= Constructors/Destructors =================*/
  public:
   FirstK() = delete;
@@ -41,7 +46,7 @@ class FirstK {
   /*========================== Impls ===========================*/
  private:
   void initialize_first_k_sets(const Grammar& grammar) {
-    for (const auto& terminal : grammar.terminals) {
+    for (const auto& terminal : grammar.get_terminals()) {
       first_k_[terminal] = {{terminal}};
     }
   }
@@ -53,7 +58,7 @@ class FirstK {
 
   bool update_first_k_in_single_iteration(const Grammar& grammar) {
     bool changed = false;
-    for (const auto& rule : grammar.rules) {
+    for (const auto& rule : grammar.get_rules()) {
       auto rhs_first_k = compute_first_k_for_rhs(rule);
       changed |= update_lhs_first_k_if_changed(rule, rhs_first_k);
     }

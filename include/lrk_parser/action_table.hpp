@@ -57,7 +57,7 @@ class ActionTable {
       const auto& situations = states[i];
 
       for (const auto& sit : situations) {
-        const auto& rule = grammar.rules[sit.rule_idx];
+        const auto& rule = grammar.get_rule_by_idx(sit.rule_idx);
 
         if (sit.dot_pose < rule.rhs.size()) {
           const CharT kNextSym = rule.rhs[sit.dot_pose];
