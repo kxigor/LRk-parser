@@ -65,14 +65,10 @@ class ActionTable {
           const CharT kNextSym = rule.rhs[sit.dot_pose];
 
           if (grammar.is_terminal(kNextSym)) {
-            const StringT kTail = rule.rhs.substr(sit.dot_pose + 1);
+            const StringT kTail = rule.rhs.substr(sit.dot_pose);
             auto eff_lookaheads = first_k.compute_first_k(kTail + sit.actpref);
 
             for (const auto& u : eff_lookaheads) {
-              if (u.empty() || u[0] != kNextSym) {
-                continue;
-              }
-
               const TransitionKey kTKey{.current_state_id = kCurrentStateId,
                                         .symbol = kNextSym};
               if (goto_table.contains(kTKey)) {
