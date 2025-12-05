@@ -1,2 +1,3 @@
 add_subdirectory(grammar)
 add_subdirectory(first_k)
+add_subdirectory(canonical_collection)

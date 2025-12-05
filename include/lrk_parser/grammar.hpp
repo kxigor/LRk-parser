@@ -81,9 +81,6 @@ struct Grammar {
   VectorT<details::Rule> rules;
   UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs;
 };
-
-std::ostream& operator<<(std::ostream& os, const Grammar& grammar);
-
 }  // namespace details
 
 using Grammar = details::Grammar;

@@ -15,47 +15,59 @@ using CharT = lrk_parser::CharT;
 using StringT = lrk_parser::StringT;
 using Grammar = lrk_parser::Grammar;
 
+using namespace lrk_parser;
+
 int main() {
-  std::size_t n{};
-  std::cin >> n;
-  std::size_t e{};
-  std::cin >> e;
-  std::size_t p{};
-  std::cin >> p;
+  StringT T = "a";
+  StringT N = "SA";
+  CharT Start = 'S';
+  VectorT<StringT> rules = {"S->A", "A->a"};
+  auto grammar = Grammar::init_with_strs(T, N, rules, Start);
+  details::FirstK first_k(grammar, 1);
+  details::CanonicalCollection lr_collection(grammar, first_k);
 
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  std::cout << lr_collection << '\n';
 
-  StringT non_terminals;
-  StringT terminals;
-  std::getline(std::cin, non_terminals);
-  std::getline(std::cin, terminals);
-  assert(non_terminals.size() == n);
-  assert(terminals.size() == e);
-  std::vector<StringT> rules(p);
-  for (std::size_t i = 0; i < p; ++i) {
-    std::getline(std::cin, rules[i]);
-  }
-  CharT start_sym{};
-  std::cin >> start_sym;
+  // std::size_t n{};
+  // std::cin >> n;
+  // std::size_t e{};
+  // std::cin >> e;
+  // std::size_t p{};
+  // std::cin >> p;
 
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-  auto grammar =
-      Grammar::init_with_strs(std::move(terminals), std::move(non_terminals),
-                              std::move(rules), start_sym);
+  // StringT non_terminals;
+  // StringT terminals;
+  // std::getline(std::cin, non_terminals);
+  // std::getline(std::cin, terminals);
+  // assert(non_terminals.size() == n);
+  // assert(terminals.size() == e);
+  // std::vector<StringT> rules(p);
+  // for (std::size_t i = 0; i < p; ++i) {
+  //   std::getline(std::cin, rules[i]);
+  // }
+  // CharT start_sym{};
+  // std::cin >> start_sym;
 
-  lrk_parser::LrkParser parser;
+  // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-  parser.fit(std::move(grammar), 1);
+  // auto grammar =
+  //     Grammar::init_with_strs(std::move(terminals), std::move(non_terminals),
+  //                             std::move(rules), start_sym);
 
-  std::size_t m{};
-  std::cin >> m;
+  // lrk_parser::LrkParser parser;
 
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  // parser.fit(std::move(grammar), 1);
 
-  for (std::size_t i = 0; i < m; ++i) {
-    StringT input;
-    std::getline(std::cin, input);
-    std::println("{}", parser.predict(input) ? "YES" : "NO");
-  }
+  // std::size_t m{};
+  // std::cin >> m;
+
+  // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+  // for (std::size_t i = 0; i < m; ++i) {
+  //   StringT input;
+  //   std::getline(std::cin, input);
+  //   std::println("{}", parser.predict(input) ? "YES" : "NO");
+  // }
 }

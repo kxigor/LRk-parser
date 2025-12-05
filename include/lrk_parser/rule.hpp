@@ -12,6 +12,4 @@ struct Rule {
   StringT rhs;
 };
 
-std::ostream& operator<<(std::ostream& os, const Rule& rule);
-
 }  // namespace lrk_parser::details

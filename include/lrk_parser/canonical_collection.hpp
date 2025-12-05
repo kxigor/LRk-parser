@@ -10,6 +10,14 @@
 
 namespace lrk_parser::details {
 class CanonicalCollection {
+  /*========================= Friends ==========================*/
+#ifdef UNIT_TESTS
+  friend class CanonicalCollectionTestAccessor;
+#endif
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const CanonicalCollection& cc);
+
   /*====================== Usings/Helpers ======================*/
  public:
   using BaseGotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
@@ -99,12 +107,13 @@ class CanonicalCollection {
     return result;
   }
 
-  [[nodiscard]] details::Situations compute_go_situation(
-      const Grammar& grammar, const FirstK& fist_k,
-      const details::Situations& I, CharT X) const {
+  [[nodiscard]] details::Situations compute_go_situation(const Grammar& grammar,
+                                                         const FirstK& fist_k,
+                                                         std::size_t I_idx,
+                                                         CharT X) const {
     details::Situations kernel_situations;
 
-    for (const auto& [rule_idx, dot_pose, actpref] : I) {
+    for (const auto& [rule_idx, dot_pose, actpref] : states_[I_idx]) {
       const auto& rhs = grammar.get_rule_by_idx(rule_idx).rhs;
       if (dot_pose >= rhs.size() or X != rhs[dot_pose]) {
         continue;
@@ -129,10 +138,10 @@ class CanonicalCollection {
     while (not queue.empty()) {
       auto curr_sits_id = queue.front();
       queue.pop_front();
-      auto& curr_sits = states_[curr_sits_id];
 
       auto process_symbol_transition = [&](const auto& X) {
-        auto next_sits = compute_go_situation(grammar, first_k, curr_sits, X);
+        auto next_sits =
+            compute_go_situation(grammar, first_k, curr_sits_id, X);
         if (next_sits.empty()) {
           return;
         }

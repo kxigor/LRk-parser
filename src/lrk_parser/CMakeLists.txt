@@ -1,7 +1,8 @@
 add_library(lrk_parser 
   parser.cpp
   grammar.cpp
-  rule.cpp
+  first_k.cpp
+  output_helpers.cpp
 )
 
 target_link_libraries(lrk_parser
