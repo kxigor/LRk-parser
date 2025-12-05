@@ -57,8 +57,6 @@ class FirstK {
   static void union_k_sets(UsetT<StringT>& lhs_set,
                            const UsetT<StringT>& rhs_set);
 
-  static std::ostream& print_set(std::ostream& os, const UsetT<StringT>& set);
-
   friend std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj);
 
   /*======================= Data Fields ========================*/

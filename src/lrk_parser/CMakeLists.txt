@@ -2,6 +2,8 @@ add_library(lrk_parser
   parser.cpp
   grammar.cpp
   first_k.cpp
+  goto_table.cpp
+  canonical_collection.cpp
   output_helpers.cpp
 )
 

@@ -33,14 +33,10 @@ class GotoTable {
   GotoTable& operator=(GotoTable&& /*unused*/) = default;
 
   /*===================== Table Operations =====================*/
-  [[nodiscard]] bool has_goto_state(const TransitionKey& t_key) const {
-    return goto_table_.contains(t_key);
-  }
+  [[nodiscard]] bool has_goto_state(const TransitionKey& t_key) const;
 
   [[nodiscard]] const StateIdT& get_goto_state(
-      const TransitionKey& t_key) const {
-    return goto_table_.at(t_key);
-  }
+      const TransitionKey& t_key) const;
 
   /*======================= Data Fields ========================*/
  private:
