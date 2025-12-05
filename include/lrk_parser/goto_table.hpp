@@ -15,11 +15,9 @@ class GotoTable {
  public:
   GotoTable() = default;
 
-  explicit GotoTable(const CanonicalCollection& lr_colletion)
-      : goto_table_(lr_colletion.get_goto_table()) {}
+  explicit GotoTable(const CanonicalCollection& lr_colletion);
 
-  explicit GotoTable(CanonicalCollection&& lr_colletion)
-      : goto_table_(std::move(lr_colletion).take_goto_table()) {}
+  explicit GotoTable(CanonicalCollection&& lr_colletion);
 
   GotoTable(const GotoTable& /*unused*/) = default;
 

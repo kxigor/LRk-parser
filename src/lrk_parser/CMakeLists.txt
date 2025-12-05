@@ -1,10 +1,11 @@
 add_library(lrk_parser 
-  parser.cpp
   grammar.cpp
   first_k.cpp
-  goto_table.cpp
   canonical_collection.cpp
+  goto_table.cpp
+  action_table.cpp
   output_helpers.cpp
+  parser.cpp
 )
 
 target_link_libraries(lrk_parser

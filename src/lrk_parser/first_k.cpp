@@ -1,5 +1,11 @@
 #include "lrk_parser/first_k.hpp"
 
+lrk_parser::details::FirstK::FirstK(const Grammar& grammar, std::size_t k)
+    : k_(k) {
+  initialize_first_k_sets(grammar);
+  compute_first_k_fixed_point(grammar);
+}
+
 lrk_parser::UsetT<lrk_parser::StringT>
 lrk_parser::details::FirstK::compute_first_k(const StringT& str) const {
   UsetT<StringT> result = {StringT{}};

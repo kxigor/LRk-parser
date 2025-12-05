@@ -32,9 +32,7 @@ class CanonicalCollection {
 
   CanonicalCollection(CanonicalCollection&&) = default;
 
-  CanonicalCollection(const Grammar& grammar, const FirstK& fist_k) {
-    build_goto_table(grammar, fist_k);
-  }
+  CanonicalCollection(const Grammar& grammar, const FirstK& fist_k);
 
   /*======================= Assignments ========================*/
   CanonicalCollection& operator=(const CanonicalCollection& /*unused*/) =

@@ -6,6 +6,11 @@ using StateSetToIdT = lrk_parser::details::CanonicalCollection::StateSetToIdT;
 using Situations = lrk_parser::details::Situations;
 using StateIdT = lrk_parser::details::StateIdT;
 
+lrk_parser::details::CanonicalCollection::CanonicalCollection(
+    const Grammar& grammar, const FirstK& fist_k) {
+  build_goto_table(grammar, fist_k);
+}
+
 const BaseGotoTableT& lrk_parser::details::CanonicalCollection::get_goto_table()
     const noexcept {
   return goto_table_;

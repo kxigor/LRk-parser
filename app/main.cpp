@@ -18,15 +18,12 @@ using Grammar = lrk_parser::Grammar;
 using namespace lrk_parser;
 
 int main() {
-  StringT T = "ab";  // Терминалы: id, =
+  StringT T = "ab";   // Терминалы: id, =
   StringT N = "S";    // Нетерминал: E
   CharT Start = 'S';  // Начальный нетерминал: E
 
   // Правила: 1) E -> id = E, 2) E -> id
-  VectorT<StringT> rules = {
-    "S->SaSb", 
-    "S->"
-  };
+  VectorT<StringT> rules = {"S->SaSb", "S->"};
 
   auto grammar = Grammar::init_with_strs(T, N, rules, Start);
   details::FirstK first_k(grammar, 1);

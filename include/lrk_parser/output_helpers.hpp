@@ -1,5 +1,6 @@
 #pragma once
 
+#include "action_table.hpp"
 #include "canonical_collection.hpp"
 #include "config.hpp"
 #include "first_k.hpp"
@@ -7,7 +8,6 @@
 #include "rule.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
-#include "action_table.hpp"
 
 namespace lrk_parser::details {
 /*=========================== Fwds ===========================*/

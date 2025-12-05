@@ -22,10 +22,7 @@ class FirstK {
 
   FirstK(FirstK&& /*unused*/) = default;
 
-  FirstK(const Grammar& grammar, std::size_t k) : k_(k) {
-    initialize_first_k_sets(grammar);
-    compute_first_k_fixed_point(grammar);
-  }
+  FirstK(const Grammar& grammar, std::size_t k);
 
   ~FirstK() = default;
 
