@@ -15,6 +15,8 @@ class ActionTable {
   /*====================== Usings/Helpers ======================*/
   using BaseActionTableT = UmapT<ActionKey, Action, ActionKeyHash>;
 
+  friend std::ostream& operator<<(std::ostream& os, const ActionTable& table);
+
   /*================= Constructors/Destructors =================*/
  public:
   ActionTable() = default;

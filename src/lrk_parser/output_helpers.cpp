@@ -1,5 +1,7 @@
 #include "lrk_parser/output_helpers.hpp"
 
+#include <iomanip>
+
 std::ostream& lrk_parser::details::operator<<(
     std::ostream& os, const lrk_parser::details::Rule& rule) {
   os << rule.lhs << lrk_parser::Grammar::kArrow;
@@ -172,6 +174,127 @@ std::ostream& lrk_parser::details::operator<<(std::ostream& os,
            << ") = " << transition.second << "\n";
       }
     }
+  }
+
+  os << "--------------------------------\n";
+  return os;
+}
+
+std::ostream& lrk_parser::details::operator<<(std::ostream& os,
+                                              const ActionType& type) {
+  switch (type) {
+    case ActionType::Shift:
+      return os << "Shift";
+    case ActionType::Reduce:
+      return os << "Reduce";
+    case ActionType::Accept:
+      return os << "Accept";
+    // Добавьте другие типы, если они существуют, например Error
+    case ActionType::Error:
+    default:
+      return os << "Error";
+  }
+}
+
+// 2. Вывод действия (Action)
+// Action: {.type, .value}
+std::ostream& lrk_parser::details::operator<<(std::ostream& os,
+                                              const Action& action) {
+  switch (action.type) {
+    case ActionType::Shift:
+      // Shift to state X
+      os << "S" << action.value;
+      break;
+    case ActionType::Reduce:
+      // Reduce by rule X
+      os << "R" << action.value;
+      break;
+    case ActionType::Accept:
+      // Accept
+      os << "ACC";
+      break;
+    case ActionType::Error:
+    default:
+      // В случае ошибки или неопределенного типа
+      os << "ERR";
+      break;
+  }
+  return os;
+}
+
+// 3. Вывод ключа действия (ActionKey)
+// Выводит в формате: (State_ID, "Lookahead")
+std::ostream& lrk_parser::details::operator<<(std::ostream& os,
+                                              const ActionKey& a_key) {
+  os << "(" << a_key.state_id << ", \"";
+  if (a_key.lookahead.empty()) {
+    os << "ε";
+  } else {
+    os << a_key.lookahead;
+  }
+  os << "\")";
+  return os;
+}
+
+// 4. Основной оператор вывода для ActionTable
+std::ostream& lrk_parser::details::operator<<(std::ostream& os,
+                                              const ActionTable& table) {
+  os << "--- LR(K) Action Table ---\n";
+
+  const auto& action_map = table.action_table_;
+
+  if (action_map.empty()) {
+    os << "  (Table is empty)\n";
+    os << "--------------------------\n";
+    return os;
+  }
+
+  // Сбор уникальных состояний и уникальных lookahead'ов
+  // Для построения таблицы в удобном матричном формате
+  UsetT<StateIdT> unique_states;
+  UsetT<StringT> unique_lookaheads;
+
+  for (const auto& pair : action_map) {
+    unique_states.insert(pair.first.state_id);
+    unique_lookaheads.insert(pair.first.lookahead);
+  }
+
+  // --- Форматированный вывод таблицы ---
+
+  // Определяем ширину столбца
+  const int kColWidth = 10;
+
+  // Строка заголовков (Lookaheads)
+  os << std::setw(kColWidth) << std::left << "State";
+  for (const auto& lookahead : unique_lookaheads) {
+    std::string header = lookahead;
+    if (lookahead.empty()) {
+      header = "ε";  // Или "$" для EOF, если используется как lookahead
+    }
+    os << std::setw(kColWidth) << std::left << header;
+  }
+  os << "\n";
+
+  // Горизонтальная линия
+  os << std::string(kColWidth * (unique_lookaheads.size() + 1), '-') << "\n";
+
+  // Строки состояний
+  for (const auto& state_id : unique_states) {
+    os << std::setw(kColWidth) << std::left << state_id;
+
+    for (const auto& lookahead : unique_lookaheads) {
+      ActionKey a_key = {.state_id = state_id, .lookahead = lookahead};
+
+      std::stringstream ss;
+      if (table.has_parse_action(a_key)) {
+        ss << table.get_parse_action(a_key);
+      } else {
+        ss << "";
+      }
+
+      os << std::setw(kColWidth) << std::left << ss.str();
+    }
+    os << "\n";
   }
 
   os << "--------------------------------\n";
