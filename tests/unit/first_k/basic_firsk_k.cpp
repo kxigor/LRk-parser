@@ -23,7 +23,6 @@ class FirstKTestAccessor : public FirstK {
 
   UsetT<StringT> PublicConcatKSets(const UsetT<StringT>& lhs_set,
                                    const UsetT<StringT>& rhs_set) const {
-    // Внутри Accessor мы можем вызвать приватный метод, используя k_ из объекта
     return concat_k_sets(lhs_set, rhs_set);
   }
 
@@ -70,11 +69,6 @@ TEST_F(FirstKTestGrammar, ConcatKSets_K2_Truncation) {
   UsetT<StringT> set1 = {"ab", "a"};
   UsetT<StringT> set2 = {"c", ""};
 
-  // Ожидается:
-  // "ab" (длина >= k) -> "ab"
-  // "a" + "c" -> "ac"
-  // "a" + "" -> "a"
-  // Результат: {"ab", "ac", "a"}
   UsetT<StringT> expected = {"ab", "ac", "a"};
   UsetT<StringT> result = fk_acc.PublicConcatKSets(set1, set2);
 
@@ -89,11 +83,6 @@ TEST_F(FirstKTestGrammar, ConcatKSets_K3_FullTruncation) {
   UsetT<StringT> set1 = {"a", "b"};
   UsetT<StringT> set2 = {"cde", "fg"};
 
-  // Ожидается (k=3):
-  // "a" + "cde" -> "acde" -> "acd" (trunc)
-  // "a" + "fg" -> "afg"
-  // "b" + "cde" -> "bcde" -> "bcd" (trunc)
-  // "b" + "fg" -> "bfg"
   UsetT<StringT> expected = {"acd", "afg", "bcd", "bfg"};
   UsetT<StringT> result = fk_acc.PublicConcatKSets(set1, set2);
 
@@ -103,7 +92,7 @@ TEST_F(FirstKTestGrammar, ConcatKSets_K3_FullTruncation) {
 
 TEST_F(FirstKTestGrammar, FullFirstKComputation_K1) {
   Grammar g = create_grammar(RulesStr_K1);
-  FirstKTestAccessor fk_acc(g, 1);  // k = 1
+  FirstKTestAccessor fk_acc(g, 1);
 
   const auto& first_k_map = fk_acc.GetFirstKMap();
 
@@ -111,17 +100,14 @@ TEST_F(FirstKTestGrammar, FullFirstKComputation_K1) {
   EXPECT_EQ(first_k_map.at('b'), (UsetT<StringT>{"b"}));
   EXPECT_EQ(first_k_map.at('c'), (UsetT<StringT>{"c"}));
 
-  // First1(A) = {a, ""}
   EXPECT_EQ(first_k_map.at('A').size(), 2);
   EXPECT_TRUE(first_k_map.at('A').count("a"));
   EXPECT_TRUE(first_k_map.at('A').count(""));
 
-  // First1(B) = {b, ""}
   EXPECT_EQ(first_k_map.at('B').size(), 2);
   EXPECT_TRUE(first_k_map.at('B').count("b"));
   EXPECT_TRUE(first_k_map.at('B').count(""));
 
-  // First1(S) = First1(AB) U First1(c) = {a, b, c, ""}
   EXPECT_EQ(first_k_map.at('S').size(), 4);
   EXPECT_TRUE(first_k_map.at('S').count("a"));
   EXPECT_TRUE(first_k_map.at('S').count("b"));
@@ -130,27 +116,21 @@ TEST_F(FirstKTestGrammar, FullFirstKComputation_K1) {
 }
 
 TEST_F(FirstKTestGrammar, FullFirstKComputation_K2) {
-  // 1. Инициализация
   Grammar g = create_grammar(RulesStr_K2);
-  FirstKTestAccessor fk_acc(g, 2);  // k = 2
+  FirstKTestAccessor fk_acc(g, 2);
 
   const auto& first_k_map = fk_acc.GetFirstKMap();
 
-  // 2. Проверка First2(B) = {d, ""}
   EXPECT_EQ(first_k_map.at('B').size(), 2);
   EXPECT_TRUE(first_k_map.at('B').count("d"));
   EXPECT_TRUE(first_k_map.at('B').count(""));
 
-  // 3. Проверка First2(A): A -> Bc
-  // First2(B) * First2(c) = {d, ""} * {c} = {"dc", "c"}
   EXPECT_EQ(first_k_map.at('A').size(), 2);
   EXPECT_TRUE(first_k_map.at('A').count("dc"));
   EXPECT_TRUE(first_k_map.at('A').count("c"));
 
-  // 4. Проверка First2(S): S -> Aa
-  // First2(A) * First2(a) = {"dc", "c"} * {a} = {"dca"-> "dc", "ca"}
   EXPECT_EQ(first_k_map.at('S').size(), 2);
-  EXPECT_TRUE(first_k_map.at('S').count("dc"));  // 'dca' усекается до 'dc'
+  EXPECT_TRUE(first_k_map.at('S').count("dc"));
   EXPECT_TRUE(first_k_map.at('S').count("ca"));
 }
 
@@ -162,7 +142,7 @@ TEST_F(FirstKTestGrammar, ComputeFirstKForString_K3) {
       {"B->"},
   };
   Grammar g = create_grammar(rules);
-  FirstK fk(g, 3);  // k = 3
+  FirstK fk(g, 3);
 
   UsetT<StringT> expected = {"aa", "aca", "ccc", "ca", "cca"};
   UsetT<StringT> result = fk.compute_first_k("ABa");
@@ -171,7 +151,6 @@ TEST_F(FirstKTestGrammar, ComputeFirstKForString_K3) {
 }
 
 TEST_F(FirstKTestGrammar, FullFirstKComputation_K3) {
-  // Подготовка грамматики
   StringT terminals = "abcde";
   StringT non_terminals = "SABCD";
   CharT start_sym = 'S';
@@ -183,11 +162,10 @@ TEST_F(FirstKTestGrammar, FullFirstKComputation_K3) {
 
   Grammar g =
       Grammar::init_with_strs(terminals, non_terminals, rules, start_sym);
-  FirstKTestAccessor fk_acc(g, 3);  // k = 3
+  FirstKTestAccessor fk_acc(g, 3);
 
   const auto& first_k_map = fk_acc.GetFirstKMap();
 
-  // Проверка First₃ терминалов
   EXPECT_EQ(first_k_map.at('a').size(), 1);
   EXPECT_TRUE(first_k_map.at('a').count("a"));
 
@@ -256,9 +234,9 @@ TEST_F(FirstKTestGrammar, FullFirstKComputation_K3) {
   EXPECT_TRUE(
       first_k_map.at('S').count("bdb"));  // A→bd, B→b, C→c → "bdbc" → "bdb"
 
-  EXPECT_FALSE(first_k_map.at('S').count("a"));  // C не может быть ε!
-  EXPECT_FALSE(first_k_map.at('S').count("b"));  // C не может быть ε!
-  EXPECT_FALSE(first_k_map.at('S').count("d"));  // C не может быть ε!
+  EXPECT_FALSE(first_k_map.at('S').count("a"));
+  EXPECT_FALSE(first_k_map.at('S').count("b"));
+  EXPECT_FALSE(first_k_map.at('S').count("d"));
 
-  EXPECT_EQ(first_k_map.at('S').size(), 23);  // как в вашем выводе
+  EXPECT_EQ(first_k_map.at('S').size(), 23);
 }
