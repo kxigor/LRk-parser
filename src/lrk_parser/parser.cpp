@@ -9,7 +9,10 @@
 #include "lrk_parser/grammar.hpp"
 #include "lrk_parser/tables_base.hpp"
 
-void lrk_parser::LrkParser::fit(Grammar grammar, std::size_t k) {
+using LrkParser = lrk_parser::LrkParser;
+using ActionType = lrk_parser::details::ActionType;
+
+void LrkParser::fit(Grammar grammar, std::size_t k) {
   k_ = k;
   grammar_ = std::move(grammar);
 
@@ -20,71 +23,98 @@ void lrk_parser::LrkParser::fit(Grammar grammar, std::size_t k) {
   goto_table_ = details::GotoTable(std::move(lr_collection));
 }
 
-bool lrk_parser::LrkParser::predict(const StringT& word) const {
-  VectorT<details::StateIdT> stack;
-  stack.reserve(word.size());
-  stack.push_back(0);
+bool LrkParser::predict(const StringT& word) const {
+  PredictContext ctx(word);
 
-  std::size_t cursor = 0;
-
-  const volatile bool kB = true;
-  while (kB) {
-    const auto kCurrentStateId = stack.back();
-
-    StringT u;
-    if (cursor < word.size()) {
-      u = word.substr(cursor, k_);
+  while (ctx.is_processing_word) {
+    auto action_res = get_next_action(ctx);
+    if (not action_res.has_value()) {
+      break;
     }
 
-    const auto kAKey =
-        details::ActionKey{.state_id = kCurrentStateId, .lookahead = u};
-
-    if (not action_table_.has_parse_action(kAKey)) {
-      return false;
+    // clang-format off
+    switch (action_res->type) {
+      case ActionType::Shift  : { handle_shift_case (ctx, action_res->value); } break;
+      case ActionType::Reduce : { handle_reduce_case(ctx, action_res->value); } break;
+      case ActionType::Accept : { handle_accept_case(ctx);                    } break;
+      case ActionType::Error  : { handle_error_case (ctx);                    } break;
+      default                 : { std::unreachable();                         } break;
     }
-
-    const details::Action kAction = action_table_.get_parse_action(kAKey);
-
-    if (kAction.type == details::ActionType::Shift) {
-      if (cursor >= word.size()) {
-        return false;
-      }
-
-      stack.push_back(kAction.value);
-
-      ++cursor;
-    } else if (kAction.type == details::ActionType::Reduce) {
-      const auto& rule = grammar_.get_rule_by_idx(kAction.value);
-
-      const std::size_t kSymsToPop = rule.rhs.size();
-
-      if (stack.size() < kSymsToPop + 1) {
-        return false;
-      }
-
-      for (std::size_t i = 0; i < kSymsToPop; ++i) {
-        stack.pop_back();
-      }
-
-      const details::StateIdT kStateTop = stack.back();
-
-      const details::TransitionKey kGotoKey{.current_state_id = kStateTop,
-                                            .symbol = rule.lhs};
-
-      if (not goto_table_.has_goto_state(kGotoKey)) {
-        return false;
-      }
-
-      const details::StateIdT kNextState = goto_table_.get_goto_state(kGotoKey);
-
-      stack.push_back(kNextState);
-
-    } else if (kAction.type == details::ActionType::Accept) {
-      return cursor == word.size();
-    } else {
-      return false;
-    }
+    // clang-format on
   }
 
-  std::unreachable();
+  return ctx.is_word_recognized;
+}
+
+lrk_parser::OptionalT<lrk_parser::details::Action> LrkParser::get_next_action(
+    PredictContext& ctx) const {
+  const auto kCurrentStateId = ctx.stack.back();
+
+  StringT u;
+  if (ctx.cursor < ctx.word.size()) {
+    u = ctx.word.substr(ctx.cursor, k_);
+  }
+
+  const auto kAKey =
+      details::ActionKey{.state_id = kCurrentStateId, .lookahead = u};
+
+  if (not action_table_.has_parse_action(kAKey)) {
+    return {};
+  }
+
+  return action_table_.get_parse_action(kAKey);
+}
+
+void LrkParser::handle_shift_case(PredictContext& ctx,
+                                  std::size_t next_state_id) {
+  if (ctx.cursor >= ctx.word.size()) {
+    ctx.is_processing_word = false;
+    ctx.is_word_recognized = false;
+    return;
+  }
+
+  ctx.stack.push_back(next_state_id);
+
+  ++ctx.cursor;
+}
+
+void LrkParser::handle_reduce_case(PredictContext& ctx,
+                                   std::size_t next_state_id) const {
+  const auto& rule = grammar_.get_rule_by_idx(next_state_id);
+  const auto kSymsToPop = rule.rhs.size();
+
+  if (ctx.stack.size() < kSymsToPop + 1) {
+    ctx.is_processing_word = false;
+    ctx.is_word_recognized = false;
+    return;
+  }
+
+  for (std::size_t i = 0; i < kSymsToPop; ++i) {
+    ctx.stack.pop_back();
+  }
+
+  const details::StateIdT kStateTop = ctx.stack.back();
+
+  const details::TransitionKey kGotoKey{.current_state_id = kStateTop,
+                                        .symbol = rule.lhs};
+
+  if (not goto_table_.has_goto_state(kGotoKey)) {
+    ctx.is_processing_word = false;
+    ctx.is_word_recognized = false;
+    return;
+  }
+
+  const details::StateIdT kNextState = goto_table_.get_goto_state(kGotoKey);
+
+  ctx.stack.push_back(kNextState);
+}
+
+void LrkParser::handle_accept_case(PredictContext& ctx) {
+  ctx.is_processing_word = false;
+  ctx.is_word_recognized = (ctx.cursor == ctx.word.size());
+}
+
+void LrkParser::handle_error_case(PredictContext& ctx) {
+  ctx.is_processing_word = false;
+  ctx.is_word_recognized = false;
 }

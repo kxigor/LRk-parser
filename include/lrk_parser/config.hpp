@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -25,4 +26,8 @@ using UmapT = std::unordered_map<T, U, H>;
 
 template <typename T>
 using DequeT = std::deque<T>;
+
+template <typename T>
+using OptionalT = std::optional<T>;
+
 };  // namespace lrk_parser

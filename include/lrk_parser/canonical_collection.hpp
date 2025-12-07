@@ -22,11 +22,24 @@ class CanonicalCollection {
                                   const CanonicalCollection& cc);
 
   /*====================== Usings/Helpers ======================*/
+  // NOLINTBEGIN
+  struct CanonicalCollectionContext {
+    CanonicalCollectionContext(const Grammar& grammar, const FirstK& first_k)
+        : grammar(grammar), first_k(first_k) {}
+
+    const Grammar& grammar;
+    const FirstK& first_k;
+  };
+  // NOLINTEND
+
+  using CCC = CanonicalCollectionContext;
+
+  using Situations = details::Situations;
+
  public:
   using BaseGotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
-  using StatesT = VectorT<details::Situations>;
-  using StateSetToIdT =
-      UmapT<details::Situations, StateIdT, details::SituationsHash>;
+  using StatesT = VectorT<Situations>;
+  using StateSetToIdT = UmapT<Situations, StateIdT, details::SituationsHash>;
 
   /*================= Constructors/Destructors =================*/
   CanonicalCollection() = delete;
@@ -35,7 +48,7 @@ class CanonicalCollection {
 
   CanonicalCollection(CanonicalCollection&&) = default;
 
-  CanonicalCollection(const Grammar& grammar, const FirstK& fist_k);
+  CanonicalCollection(const Grammar& grammar, const FirstK& first_k);
 
   ~CanonicalCollection() = default;
 
@@ -56,21 +69,16 @@ class CanonicalCollection {
 
   /*========================== Impls ===========================*/
  private:
-  [[nodiscard]] details::Situations create_initial_situations(
-      const Grammar& grammar, const FirstK& fist_k) const;
+  [[nodiscard]] static Situations create_initial_situations(CCC& ctx);
 
-  [[nodiscard]] details::Situations closure(
-      const Grammar& grammar, const FirstK& fist_k,
-      details::Situations kernal_set) const;
+  [[nodiscard]] static Situations closure(CCC& ctx, Situations kernal_set);
 
-  [[nodiscard]] details::Situations compute_go_situation(const Grammar& grammar,
-                                                         const FirstK& fist_k,
-                                                         std::size_t state_idx,
-                                                         CharT sym) const;
+  [[nodiscard]] Situations compute_go_situation(CCC& ctx, std::size_t state_idx,
+                                                CharT sym) const;
 
-  void build_goto_table(const Grammar& grammar, const FirstK& first_k);
+  void build_goto_table(CCC& ctx);
 
-  std::pair<StateIdT, bool> insert_sutiations(details::Situations state);
+  std::pair<StateIdT, bool> insert_sutiations(Situations state);
 
   /*======================= Data fields ========================*/
   StatesT states_;

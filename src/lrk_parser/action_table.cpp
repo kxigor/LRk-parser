@@ -1,8 +1,11 @@
 #include "lrk_parser/action_table.hpp"
 
+#include <cstddef>
+#include <format>
 #include <stdexcept>
 
 #include "lrk_parser/canonical_collection.hpp"
+#include "lrk_parser/config.hpp"
 #include "lrk_parser/first_k.hpp"
 #include "lrk_parser/grammar.hpp"
 #include "lrk_parser/tables_base.hpp"
@@ -11,8 +14,8 @@ using ActionTable = lrk_parser::details::ActionTable;
 
 ActionTable::ActionTable(const Grammar& grammar, const FirstK& first_k,
                          const CanonicalCollection& lr_collection) {
-  ATD dependence(grammar, first_k, lr_collection);
-  build_action_table(dependence);
+  ATC ctx(grammar, first_k, lr_collection);
+  build_action_table(ctx);
 }
 
 bool ActionTable::has_parse_action(const ActionKey& a_key) const {
@@ -24,24 +27,23 @@ const lrk_parser::details::Action& ActionTable::get_parse_action(
   return action_table_.at(a_key);
 }
 
-void ActionTable::build_action_table(const ATD& dependence) {
-  const auto& states = dependence.lr_collection.get_states();
+void ActionTable::build_action_table(ATC& ctx) {
+  const auto& states = ctx.lr_collection.get_states();
 
   for (std::size_t state_idx = 0; state_idx < states.size(); ++state_idx) {
-    process_state_situations(dependence, state_idx);
+    process_state_situations(ctx, state_idx);
   }
 }
 
-void ActionTable::process_state_situations(const ATD& dependence,
-                                           std::size_t state_idx) {
-  const auto& states = dependence.lr_collection.get_states();
-  const auto& grammar = dependence.grammar;
+void ActionTable::process_state_situations(ATC& ctx, std::size_t state_idx) {
+  const auto& states = ctx.lr_collection.get_states();
+  const auto& grammar = ctx.grammar;
 
   for (const auto& sit : states[state_idx]) {
     const auto& rule = grammar.get_rule_by_idx(sit.rule_idx);
 
     if (sit.dot_pose < rule.rhs.size()) {
-      handle_shift_insert(dependence, state_idx, sit, rule);
+      handle_shift_insert(ctx, state_idx, sit, rule);
 
     } else {
       if (rule.lhs == Grammar::kStarSym) {
@@ -53,12 +55,11 @@ void ActionTable::process_state_situations(const ATD& dependence,
   }
 }
 
-void ActionTable::handle_shift_insert(const ATD& dependence,
-                                      std::size_t state_idx,
+void ActionTable::handle_shift_insert(ATC& ctx, std::size_t state_idx,
                                       const Situation& sit, const Rule& rule) {
-  const auto& grammar = dependence.grammar;
-  const auto& goto_table = dependence.lr_collection.get_goto_table();
-  const auto& first_k = dependence.first_k;
+  const auto& grammar = ctx.grammar;
+  const auto& goto_table = ctx.lr_collection.get_goto_table();
+  const auto& first_k = ctx.first_k;
 
   const CharT kNextSym = rule.rhs[sit.dot_pose];
 
@@ -95,6 +96,7 @@ void ActionTable::handle_reduce_insert(std::size_t state_idx,
 
 void lrk_parser::details::ActionTable::add_action_checked(
     StateIdT state, const StringT& lookahead, Action new_action) {
+  /*TODO: remove ugly code*/
   const ActionKey kAKey{.state_id = state, .lookahead = lookahead};
   if (action_table_.contains(kAKey)) {
     const auto& existing = action_table_.at(kAKey);
@@ -105,7 +107,8 @@ void lrk_parser::details::ActionTable::add_action_checked(
     throw std::runtime_error(std::format(
         "LR(k) Conflict at state {}, lookahead '{}': existing type {}, new "
         "type {}",
-        state, lookahead, (int)existing.type, (int)new_action.type));
+        state, lookahead, static_cast<int>(existing.type),
+        static_cast<int>(new_action.type)));
   }
   action_table_[kAKey] = new_action;
 }

@@ -1,6 +1,11 @@
 #include "lrk_parser/first_k.hpp"
 
+#include <cstddef>
 #include <utility>
+
+#include "lrk_parser/config.hpp"
+#include "lrk_parser/grammar.hpp"
+#include "lrk_parser/rule.hpp"
 
 lrk_parser::details::FirstK::FirstK(const Grammar& grammar, std::size_t k)
     : k_(k) {

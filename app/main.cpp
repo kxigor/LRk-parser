@@ -1,3 +1,5 @@
+// NOLINTBEGIN
+
 #include <cassert>
 #include <cstddef>
 #include <iostream>
@@ -80,3 +82,5 @@ int main() {
   //   std::println("{}", parser.predict(input) ? "YES" : "NO");
   // }
 }
+
+// NOLINTEND

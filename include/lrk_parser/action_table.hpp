@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <format>
 #include <ostream>
 
@@ -7,6 +8,8 @@
 #include "config.hpp"
 #include "first_k.hpp"
 #include "grammar.hpp"
+#include "rule.hpp"
+#include "situation.hpp"
 #include "tables_base.hpp"
 
 namespace lrk_parser::details {
@@ -15,12 +18,12 @@ class ActionTable {
   using BaseActionTableT = UmapT<ActionKey, Action, ActionKeyHash>;
 
   // NOLINTBEGIN
-  struct ActionTableDependencies {
-    ActionTableDependencies(const Grammar& grammar, const FirstK& first_k,
-                            const CanonicalCollection& lr_collection)
+  struct ActionTableContext {
+    ActionTableContext(const Grammar& grammar, const FirstK& first_k,
+                       const CanonicalCollection& lr_collection)
         : grammar(grammar), first_k(first_k), lr_collection(lr_collection) {}
 
-    ~ActionTableDependencies() = default;
+    ~ActionTableContext() = default;
 
     const Grammar& grammar;
     const FirstK& first_k;
@@ -28,7 +31,7 @@ class ActionTable {
   };
   // NOLINTEND
 
-  using ATD = ActionTableDependencies;
+  using ATC = ActionTableContext;
 
   /*================= Constructors/Destructors =================*/
  public:
@@ -61,11 +64,11 @@ class ActionTable {
 
   /*========================== Impls ===========================*/
  private:
-  void build_action_table(const ATD& dependence);
+  void build_action_table(ATC& ctx);
 
-  void process_state_situations(const ATD& dependence, std::size_t state_idx);
+  void process_state_situations(ATC& ctx, std::size_t state_idx);
 
-  void handle_shift_insert(const ATD& dependence, std::size_t state_idx,
+  void handle_shift_insert(ATC& ctx, std::size_t state_idx,
                            const Situation& sit, const Rule& rule);
 
   void handle_accept_insert(std::size_t state_idx, const Situation& sit);

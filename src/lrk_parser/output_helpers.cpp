@@ -1,9 +1,15 @@
 #include "lrk_parser/output_helpers.hpp"
 
+#include <algorithm>
 #include <format>
-#include <iomanip>
 #include <ranges>
 #include <utility>
+
+#include "lrk_parser/canonical_collection.hpp"
+#include "lrk_parser/config.hpp"
+#include "lrk_parser/grammar.hpp"
+#include "lrk_parser/rule.hpp"
+#include "lrk_parser/tables_base.hpp"
 
 using CharT = lrk_parser::CharT;
 using Rule = lrk_parser::details::Rule;
@@ -14,12 +20,12 @@ using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
 
 template <>
 struct std::formatter<lrk_parser::details::Rule> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::ranges::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::Rule& rule,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::Rule& rule,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     out = std::format_to(out, "{} {} ", rule.lhs, lrk_parser::Grammar::kArrow);
@@ -36,12 +42,12 @@ struct std::formatter<lrk_parser::details::Rule> {
 
 template <>
 struct std::formatter<lrk_parser::UsetT<StringT>> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::UsetT<StringT>& set,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::UsetT<StringT>& set,
+                     std::format_context& ctx) {
     auto out = ctx.out();
     out = std::format_to(out, "{{");
 
@@ -63,12 +69,12 @@ struct std::formatter<lrk_parser::UsetT<StringT>> {
 
 template <>
 struct std::formatter<lrk_parser::details::FirstK> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::FirstK& first_k_obj,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::FirstK& first_k_obj,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     out = std::format_to(
@@ -94,12 +100,12 @@ struct std::formatter<lrk_parser::details::FirstK> {
 
 template <>
 struct std::formatter<lrk_parser::UsetT<lrk_parser::CharT>> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::UsetT<lrk_parser::CharT>& set,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::UsetT<lrk_parser::CharT>& set,
+                     std::format_context& ctx) {
     auto out = ctx.out();
     out = std::format_to(out, "{{");
     if (not set.empty()) {
@@ -115,12 +121,12 @@ struct std::formatter<lrk_parser::UsetT<lrk_parser::CharT>> {
 
 template <>
 struct std::formatter<lrk_parser::details::Grammar> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::Grammar& grammar,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::Grammar& grammar,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     auto out_rule_by_idx = [&](auto rule_idx) {
@@ -165,12 +171,12 @@ struct std::formatter<lrk_parser::details::Grammar> {
 
 template <>
 struct std::formatter<lrk_parser::details::Situation> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::Situation& sit,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::Situation& sit,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     out = std::format_to(out, "[Rule={}, Dot={}, Lookahead=\"", sit.rule_idx,
@@ -190,13 +196,13 @@ struct std::formatter<lrk_parser::details::Situation> {
 
 template <>
 struct std::formatter<lrk_parser::details::Situations> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     auto it = std::find(ctx.begin(), ctx.end(), '}');
     return it;
   }
 
-  auto format(const lrk_parser::details::Situations& sits,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::Situations& sits,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     out = std::format_to(out, "{{\n");
@@ -222,12 +228,12 @@ struct std::formatter<lrk_parser::details::Situations> {
 
 template <>
 struct std::formatter<lrk_parser::details::TransitionKey> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::TransitionKey& tkey,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::TransitionKey& tkey,
+                     std::format_context& ctx) {
     return std::format_to(ctx.out(), "({}, {})", tkey.current_state_id,
                           tkey.symbol);
   }
@@ -235,11 +241,12 @@ struct std::formatter<lrk_parser::details::TransitionKey> {
 
 template <>
 struct std::formatter<BaseGotoTableT> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const BaseGotoTableT& table_map, std::format_context& ctx) const {
+  static auto format(const BaseGotoTableT& table_map,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     if (table_map.empty()) {
@@ -271,12 +278,12 @@ struct std::formatter<BaseGotoTableT> {
 
 template <>
 struct std::formatter<lrk_parser::details::CanonicalCollection> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::CanonicalCollection& cc,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::CanonicalCollection& cc,
+                     std::format_context& ctx) {
     auto out = ctx.out();
 
     out = std::format_to(
@@ -303,12 +310,12 @@ struct std::formatter<lrk_parser::details::CanonicalCollection> {
 
 template <>
 struct std::formatter<lrk_parser::details::ActionType> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::ActionType& type,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::ActionType& type,
+                     std::format_context& ctx) {
     switch (type) {
       case lrk_parser::details::ActionType::Shift:
         return std::format_to(ctx.out(), "Shift");
@@ -326,12 +333,12 @@ struct std::formatter<lrk_parser::details::ActionType> {
 
 template <>
 struct std::formatter<lrk_parser::details::Action> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::Action& action,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::Action& action,
+                     std::format_context& ctx) {
     switch (action.type) {
       case lrk_parser::details::ActionType::Shift:
         return std::format_to(ctx.out(), "S{}", action.value);
@@ -349,12 +356,12 @@ struct std::formatter<lrk_parser::details::Action> {
 
 template <>
 struct std::formatter<lrk_parser::details::ActionKey> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::ActionKey& a_key,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::ActionKey& a_key,
+                     std::format_context& ctx) {
     auto out = std::format_to(ctx.out(), "({}, \"", a_key.state_id);
 
     if (a_key.lookahead.empty()) {
@@ -371,12 +378,12 @@ struct std::formatter<lrk_parser::details::ActionKey> {
 
 template <>
 struct std::formatter<lrk_parser::details::ActionTable> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::ActionTable& table,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::ActionTable& table,
+                     std::format_context& ctx) {
     static constexpr const size_t TABLE_LINE_WIDTH = 64;
     static constexpr const int COLUMN_WIDTH = 10;
 
@@ -438,24 +445,24 @@ struct std::formatter<lrk_parser::details::ActionTable> {
 
 template <>
 struct std::formatter<lrk_parser::details::GotoTable> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::details::GotoTable& table,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::details::GotoTable& table,
+                     std::format_context& ctx) {
     return std::format_to(ctx.out(), "{}", table.goto_table_);
   }
 };
 
 template <>
 struct std::formatter<lrk_parser::LrkParser> {
-  constexpr auto parse(std::format_parse_context& ctx) {
+  static constexpr auto parse(std::format_parse_context& ctx) {
     return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  auto format(const lrk_parser::LrkParser& parser,
-              std::format_context& ctx) const {
+  static auto format(const lrk_parser::LrkParser& parser,
+                     std::format_context& ctx) {
     static const auto kLineWidth = 64;
     auto out = ctx.out();
 

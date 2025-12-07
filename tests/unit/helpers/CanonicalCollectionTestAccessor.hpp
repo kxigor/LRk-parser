@@ -14,13 +14,15 @@ class CanonicalCollectionTestAccessor : public CanonicalCollection {
   details::Situations PublicClosure(const Grammar& grammar,
                                     const FirstK& fist_k,
                                     details::Situations kernel_set) const {
-    return closure(grammar, fist_k, std::move(kernel_set));
+    CanonicalCollection::CCC ctx(grammar, fist_k);
+    return closure(ctx, std::move(kernel_set));
   }
 
   details::Situations PublicComputeGo(const Grammar& grammar,
                                       const FirstK& fist_k, std::size_t I_idx,
                                       CharT X) const {
-    return compute_go_situation(grammar, fist_k, I_idx, X);
+    CanonicalCollection::CCC ctx(grammar, fist_k);
+    return compute_go_situation(ctx, I_idx, X);
   }
 
   std::pair<StateIdT, bool> PublicInsertSituations(details::Situations I) {
