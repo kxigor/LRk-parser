@@ -1,9 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
+#include <format>
 #include <ostream>
-#include <ranges>
 
 #include "config.hpp"
 #include "rule.hpp"
@@ -32,12 +31,14 @@ struct Grammar {
   Grammar& operator=(Grammar&& /*unused*/) = default;
 
   /*========================= Factory ==========================*/
-  [[nodiscard]] static Grammar init_with_strs(StringT terminals,
-                                              StringT nonterminals,
-                                              VectorT<StringT> rules_str,
-                                              CharT start);
+  [[nodiscard]] static Grammar create_from_text(StringT terminals,
+                                                StringT nonterminals,
+                                                VectorT<StringT> rules_str,
+                                                CharT start);
 
   /*========================== Output ==========================*/
+  friend struct std::formatter<Grammar>;
+
   friend std::ostream& operator<<(std::ostream& os, const Grammar& grammar);
 
   /*================== Symbol classification ===================*/
@@ -76,10 +77,10 @@ struct Grammar {
   void throw_if_wrong_rule_str(const StringT& rule_str) const;
 
   /*======================= Data fields ========================*/
-  UsetT<CharT> terminals;
-  UsetT<CharT> nonterminals;
-  VectorT<details::Rule> rules;
-  UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs;
+  UsetT<CharT> terminals_;
+  UsetT<CharT> nonterminals_;
+  VectorT<details::Rule> rules_;
+  UmapT<CharT, VectorT<std::size_t>> lhs_to_rule_idxs_;
 };
 }  // namespace details
 

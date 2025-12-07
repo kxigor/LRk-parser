@@ -1,5 +1,13 @@
 #include "lrk_parser/canonical_collection.hpp"
 
+#include <utility>
+
+#include "lrk_parser/config.hpp"
+#include "lrk_parser/first_k.hpp"
+#include "lrk_parser/grammar.hpp"
+#include "lrk_parser/situation.hpp"
+#include "lrk_parser/tables_base.hpp"
+
 using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
 using StatesT = lrk_parser::details::CanonicalCollection::StatesT;
 using StateSetToIdT = lrk_parser::details::CanonicalCollection::StateSetToIdT;
@@ -26,7 +34,7 @@ const StatesT& lrk_parser::details::CanonicalCollection::get_states()
   return states_;
 }
 
-const StateSetToIdT
+const StateSetToIdT&
 lrk_parser::details::CanonicalCollection::get_state_to_id_map() const noexcept {
   return state_set_to_id_;
 }
@@ -57,7 +65,7 @@ Situations lrk_parser::details::CanonicalCollection::closure(
     if (dot_pose >= rhs.size()) {
       continue;
     }
-    const auto& B = rhs[dot_pose];
+    const auto& B = rhs[dot_pose];  // NOLINT
     if (not grammar.is_nonterminal(B)) {
       continue;
     }
@@ -67,11 +75,11 @@ Situations lrk_parser::details::CanonicalCollection::closure(
 
     for (const auto& rule_B_idx : grammar.get_rules_idxs(B)) {
       for (const auto& x : firsk_k) {
-        details::Situation new_sit = {
+        const details::Situation kNewSit = {
             .rule_idx = rule_B_idx, .dot_pose = 0, .actpref = x};
-        auto [it, emplace_status] = result.emplace(new_sit);
+        auto [it, emplace_status] = result.emplace(kNewSit);
         if (emplace_status) {
-          queue.emplace_front(new_sit);
+          queue.emplace_front(kNewSit);
         }
       }
     }
@@ -81,13 +89,13 @@ Situations lrk_parser::details::CanonicalCollection::closure(
 }
 
 Situations lrk_parser::details::CanonicalCollection::compute_go_situation(
-    const Grammar& grammar, const FirstK& fist_k, std::size_t I_idx,
-    CharT X) const {
+    const Grammar& grammar, const FirstK& fist_k, std::size_t state_idx,
+    CharT sym) const {
   Situations kernel_situations;
 
-  for (const auto& [rule_idx, dot_pose, actpref] : states_[I_idx]) {
+  for (const auto& [rule_idx, dot_pose, actpref] : states_[state_idx]) {
     const auto& rhs = grammar.get_rule_by_idx(rule_idx).rhs;
-    if (dot_pose >= rhs.size() or X != rhs[dot_pose]) {
+    if (dot_pose >= rhs.size() or sym != rhs[dot_pose]) {
       continue;
     }
     kernel_situations.emplace(details::Situation{
@@ -141,9 +149,9 @@ void lrk_parser::details::CanonicalCollection::build_goto_table(
 }
 
 std::pair<StateIdT, bool>
-lrk_parser::details::CanonicalCollection::insert_sutiations(Situations I) {
+lrk_parser::details::CanonicalCollection::insert_sutiations(Situations state) {
   auto [it, emplace_status] =
-      state_set_to_id_.try_emplace(std::move(I), StateIdT{});
+      state_set_to_id_.try_emplace(std::move(state), StateIdT{});
   if (emplace_status) {
     it->second = states_.size();
     states_.emplace_back(it->first);

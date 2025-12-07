@@ -44,7 +44,7 @@ struct FirstKTestGrammar : public ::testing::Test {
   VectorT<StringT> RulesStr_K2 = {"S->Aa", "A->Bc", "B->d", "B->"};
 
   Grammar create_grammar(const VectorT<StringT>& rules) {
-    return Grammar::init_with_strs(T, N, rules, StartSym);
+    return Grammar::create_from_text(T, N, rules, StartSym);
   }
 };
 
@@ -161,7 +161,7 @@ TEST_F(FirstKTestGrammar, FullFirstKComputation_K3) {
   };
 
   Grammar g =
-      Grammar::init_with_strs(terminals, non_terminals, rules, start_sym);
+      Grammar::create_from_text(terminals, non_terminals, rules, start_sym);
   FirstKTestAccessor fk_acc(g, 3);
 
   const auto& first_k_map = fk_acc.GetFirstKMap();

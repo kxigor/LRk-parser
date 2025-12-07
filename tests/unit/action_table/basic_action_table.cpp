@@ -24,7 +24,7 @@ class ActionTableTest : public ::testing::Test {
     StringT N = "SA";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = Grammar::init_with_strs(T, N, rules, Start);
+    grammar_ = Grammar::create_from_text(T, N, rules, Start);
     first_k_ = std::make_unique<FirstK>(grammar_, 1);
     canonical_collection_ =
         std::make_unique<CanonicalCollection>(grammar_, *first_k_);
@@ -35,7 +35,7 @@ class ActionTableTest : public ::testing::Test {
     StringT N = "S";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->a", "S->a"};
-    grammar_ = Grammar::init_with_strs(T, N, rules, Start);
+    grammar_ = Grammar::create_from_text(T, N, rules, Start);
     first_k_ = std::make_unique<FirstK>(grammar_, 1);
 
     canonical_collection_ =

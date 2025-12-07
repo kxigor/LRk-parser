@@ -24,7 +24,7 @@ class CanonicalCollectionBaseTest : public ::testing::Test {
     StringT N = "SA";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = Grammar::init_with_strs(T, N, rules, Start);
+    grammar_ = Grammar::create_from_text(T, N, rules, Start);
     first_k_ = std::make_unique<FirstK>(grammar_, 1);
   }
 };

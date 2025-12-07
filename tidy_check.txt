@@ -1,0 +1,16 @@
+Test project /home/garik/PROJECTS/LRk-parser/build/dev-debug-asan
+    Start 1: basic_grammar
+1/8 Test #1: basic_grammar ....................   Passed    0.01 sec
+    Start 2: basic_firsk_k
+2/8 Test #2: basic_firsk_k ....................   Passed    0.01 sec
+    Start 3: basic_canonical_collection
+3/8 Test #3: basic_canonical_collection .......   Passed    0.01 sec
+    Start 4: basic_goto_table
+4/8 Test #4: basic_goto_table .................   Passed    0.01 sec
+    Start 5: basic_action_table
+5/8 Test #5: basic_action_table ...............   Passed    0.01 sec
+    Start 6: basic_parser
+6/8 Test #6: basic_parser .....................   Passed    0.01 sec
+    Start 7: FormatCheck
+7/8 Test #7: FormatCheck ......................   Passed    0.23 sec
+    Start 8: TidyCheck

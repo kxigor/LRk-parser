@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <utility>
+#include <format>
 
 #include "canonical_collection.hpp"
 #include "tables_base.hpp"
@@ -29,6 +29,9 @@ class GotoTable {
   GotoTable& operator=(const GotoTable& /*unused*/) = default;
 
   GotoTable& operator=(GotoTable&& /*unused*/) = default;
+
+  /*========================== Output ==========================*/
+  friend struct std::formatter<GotoTable>;
 
   /*===================== Table Operations =====================*/
   [[nodiscard]] bool has_goto_state(const TransitionKey& t_key) const;

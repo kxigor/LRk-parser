@@ -1,5 +1,10 @@
 #include "lrk_parser/goto_table.hpp"
 
+#include <utility>
+
+#include "lrk_parser/canonical_collection.hpp"
+#include "lrk_parser/tables_base.hpp"
+
 lrk_parser::details::GotoTable::GotoTable(
     const CanonicalCollection& lr_colletion)
     : goto_table_(lr_colletion.get_goto_table()) {}

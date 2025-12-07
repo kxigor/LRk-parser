@@ -16,7 +16,7 @@ class LrkParserTest : public ::testing::Test {
                   const VectorT<StringT>& rules, CharT start_symbol,
                   std::size_t k) {
     Grammar grammar =
-        Grammar::init_with_strs(terminals, non_terminals, rules, start_symbol);
+        Grammar::create_from_text(terminals, non_terminals, rules, start_symbol);
     parser_.fit(std::move(grammar), k);
   }
 };

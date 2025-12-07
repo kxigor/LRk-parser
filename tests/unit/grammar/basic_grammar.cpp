@@ -21,7 +21,7 @@ struct GrammarTest : public ::testing::Test {
 };
 
 TEST_F(GrammarTest, InitWithStrs_ValidGrammar) {
-  Grammar grammar = Grammar::init_with_strs(T, N, RulesStr, StartSym);
+  Grammar grammar = Grammar::create_from_text(T, N, RulesStr, StartSym);
 
   EXPECT_EQ(grammar.get_terminals().size(), 3);
   EXPECT_TRUE(grammar.is_terminal('a'));
@@ -51,7 +51,7 @@ TEST_F(GrammarTest, InitWithStrs_ValidGrammar) {
 
 TEST_F(GrammarTest, InitWithStrs_PrepareRulesStr_RemovesSpaces) {
   VectorT<StringT> rules_with_spaces = {" S -> AB ", "A -> a"};
-  Grammar grammar = Grammar::init_with_strs(T, N, rules_with_spaces, StartSym);
+  Grammar grammar = Grammar::create_from_text(T, N, rules_with_spaces, StartSym);
   const auto& rules = grammar.get_rules();
 
   EXPECT_EQ(rules[1].lhs, 'S');
@@ -62,60 +62,60 @@ TEST_F(GrammarTest, InitWithStrs_PrepareRulesStr_RemovesSpaces) {
 
 TEST_F(GrammarTest, InitWithStrs_Throws_ReservedStarSymbolInTerminals) {
   EXPECT_THROW(
-      std::ignore = Grammar::init_with_strs(T + '@', N, RulesStr, StartSym),
+      std::ignore = Grammar::create_from_text(T + '@', N, RulesStr, StartSym),
       std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_ReservedStarSymbolInNonTerminals) {
   EXPECT_THROW(
-      std::ignore = Grammar::init_with_strs(T, N + '@', RulesStr, StartSym),
+      std::ignore = Grammar::create_from_text(T, N + '@', RulesStr, StartSym),
       std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_OverlappingSets) {
   EXPECT_THROW(
-      std::ignore = Grammar::init_with_strs(T, N + 'a', RulesStr, StartSym),
+      std::ignore = Grammar::create_from_text(T, N + 'a', RulesStr, StartSym),
       std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_RuleTooShort) {
   VectorT<StringT> bad_rules = {"S-"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_ArrowMissing) {
   VectorT<StringT> bad_rules = {"S>AB"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_ArrowWrongPos) {
   VectorT<StringT> bad_rules = {"AS->B"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_TerminalOnLHS) {
   VectorT<StringT> bad_rules = {"a->B"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_UnknownSymbolOnLHS) {
   VectorT<StringT> bad_rules = {"Z->AB"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, InitWithStrs_Throws_UnknownSymbolOnRHS) {
   VectorT<StringT> bad_rules = {"S->Z"};
-  EXPECT_THROW(std::ignore = Grammar::init_with_strs(T, N, bad_rules, StartSym),
+  EXPECT_THROW(std::ignore = Grammar::create_from_text(T, N, bad_rules, StartSym),
                std::logic_error);
 }
 
 TEST_F(GrammarTest, Accessors_Getters) {
-  Grammar grammar = Grammar::init_with_strs(T, N, RulesStr, StartSym);
+  Grammar grammar = Grammar::create_from_text(T, N, RulesStr, StartSym);
 
   EXPECT_TRUE(grammar.is_rules_exists('S'));
   EXPECT_FALSE(grammar.is_rules_exists('Z'));

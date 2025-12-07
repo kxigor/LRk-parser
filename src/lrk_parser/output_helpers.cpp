@@ -1,164 +1,254 @@
 #include "lrk_parser/output_helpers.hpp"
 
+#include <format>
 #include <iomanip>
+#include <ranges>
+#include <utility>
 
-std::ostream& lrk_parser::details::operator<<(
-    std::ostream& os, const lrk_parser::details::Rule& rule) {
-  os << rule.lhs << lrk_parser::Grammar::kArrow;
-  if (rule.rhs.empty()) {
-    os << "ε";
-  } else {
-    os << rule.rhs;
+using CharT = lrk_parser::CharT;
+using Rule = lrk_parser::details::Rule;
+using StringT = lrk_parser::StringT;
+using Grammar = lrk_parser::Grammar;
+using StateIdT = lrk_parser::details::StateIdT;
+using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
+
+template <>
+struct std::formatter<lrk_parser::details::Rule> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::ranges::find(ctx.begin(), ctx.end(), '}');
   }
-  return os;
-}
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const UsetT<StringT>& set) {
-  os << "{";
-  bool first = true;
-  for (const auto& item : set) {
-    if (!first) os << ", ";
-    if (item.empty()) {
-      os << "ε";
+
+  auto format(const lrk_parser::details::Rule& rule,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
+
+    out = std::format_to(out, "{} {} ", rule.lhs, lrk_parser::Grammar::kArrow);
+
+    if (rule.rhs.empty()) {
+      out = std::format_to(out, "ε");
     } else {
-      os << "\"" << item << "\"";
+      out = std::format_to(out, "{}", rule.rhs);
     }
-    first = false;
+
+    return out;
   }
-  os << "}";
-  return os;
-}
+};
 
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const FirstK& first_k_obj) {
-  os << "--- First-K Sets (K = " << first_k_obj.k_ << ") ---\n";
-
-  for (const auto& pair : first_k_obj.first_k_) {
-    const auto& symbol = pair.first;
-    const auto& first_k_set = pair.second;
-    os << "  First_" << first_k_obj.k_ << "(";
-    os << symbol << ") = ";
-    os << first_k_set;
-    os << "\n";
+template <>
+struct std::formatter<lrk_parser::UsetT<StringT>> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  os << "---------------------------\n";
-  return os;
-}
+  auto format(const lrk_parser::UsetT<StringT>& set,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
+    out = std::format_to(out, "{{");
 
-std::ostream& lrk_parser::details::operator<<(
-    std::ostream& os, const lrk_parser::details::Grammar& grammar) {
-  os << "--- LR(k) Grammar ---\n";
-
-  os << "Non-Terminals (N) = {";
-  bool first = true;
-  for (const auto& sym : grammar.nonterminals) {
-    if (!first) os << ", ";
-    os << sym;
-    first = false;
-  }
-  os << "}\n";
-
-  os << "Terminals (T)     = {";
-  first = true;
-  for (const auto& sym : grammar.terminals) {
-    if (!first) os << ", ";
-    os << sym;
-    first = false;
-  }
-  os << "}\n";
-
-  os << "Production Rules (P):\n";
-
-  for (const auto& [lhs, rule_idxs] : grammar.lhs_to_rule_idxs) {
-    os << "  " << lhs << " -> ";
-
-    bool first_rhs = true;
-    for (std::size_t idx : rule_idxs) {
-      if (!first_rhs) os << " | ";
-      const auto& rule = grammar.get_rule_by_idx(idx);
-      if (rule.rhs.empty()) {
-        os << "ε";
+    bool first = true;
+    for (const auto& item : set) {
+      if (!first) out = std::format_to(out, ", ");
+      if (item.empty()) {
+        out = std::format_to(out, "ε");
       } else {
-        os << rule.rhs;
+        out = std::format_to(out, "\"{}\"", item);
       }
-      first_rhs = false;
+      first = false;
     }
-    os << "\n";
+    out = std::format_to(out, "}}");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::FirstK> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  if (!grammar.rules.empty() && grammar.rules[0].lhs == Grammar::kStarSym) {
-    os << "Start Symbol (S)  = " << grammar.rules[0].rhs;
-    os << " (Augmented: " << grammar.rules[0] << ")\n";
-  }
+  auto format(const lrk_parser::details::FirstK& first_k_obj,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
 
-  os << "-----------------------\n";
-  return os;
-}
+    out = std::format_to(
+        out,
+        "--------------------- First-K Sets (K = {}) ---------------------\n",
+        first_k_obj.k_);
 
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const Situation& sit) {
-  os << "[";
-  os << "Rule=" << sit.rule_idx;
-  os << ", Dot=" << sit.dot_pose;
-  os << ", Lookahead=\"";
+    for (const auto& pair : first_k_obj.first_k_) {
+      const auto& symbol = pair.first;
+      const auto& first_k_set = pair.second;
 
-  if (sit.actpref.empty()) {
-    os << "ε";
-  } else {
-    os << sit.actpref;
-  }
-
-  os << "\"]";
-  return os;
-}
-
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const Situations& sits) {
-  os << "{\n";
-  bool first = true;
-
-  for (const auto& sit : sits) {
-    if (!first) {
-      os << ",\n";
+      out = std::format_to(out, "  First_{}({}) = {}\n", first_k_obj.k_, symbol,
+                           first_k_set);
     }
-    os << "    " << sit;
-    first = false;
+
+    out = std::format_to(
+        out,
+        "----------------------------------------------------------------\n");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::UsetT<lrk_parser::CharT>> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  if (!sits.empty()) {
-    os << "\n";
+  auto format(const lrk_parser::UsetT<lrk_parser::CharT>& set,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
+    out = std::format_to(out, "{{");
+    if (not set.empty()) {
+      out = std::format_to(out, "{}", *set.begin());
+    }
+    for (const auto& sym : set | std::views::drop(1)) {
+      out = std::format_to(out, ", {}", sym);
+    }
+    out = std::format_to(out, "}}");
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::Grammar> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  os << "}";
-  return os;
-}
+  auto format(const lrk_parser::details::Grammar& grammar,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
 
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const TransitionKey& tkey) {
-  os << "(" << tkey.current_state_id << ", " << tkey.symbol << ")";
-  return os;
-}
+    auto out_rule_by_idx = [&](auto rule_idx) {
+      const auto& rule = grammar.get_rule_by_idx(rule_idx);
+      return out = std::format_to(out, "{}", rule);
+    };
 
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const CanonicalCollection& cc) {
-  os << "--- Canonical LR(K) Collection ---\n";
+    out = std::format_to(out, "--- LR(k) Grammar ---\n");
+    out = std::format_to(out, "Non-Terminals (N) = {{{}}}\n",
+                         grammar.nonterminals_);
+    out =
+        std::format_to(out, "Terminals (T)     = {{{}}}\n", grammar.terminals_);
 
-  os << "## States:\n";
-  const auto& states = cc.get_states();
-  for (StateIdT i = 0; i < states.size(); ++i) {
-    os << "  State " << i << ":\n";
-    os << states[i] << "\n";
+    out = std::format_to(out, "Production Rules (P):\n");
+
+    for (const auto& [lhs, rule_idxs] : grammar.lhs_to_rule_idxs_) {
+      out = std::format_to(out, " {} {} ", lhs, Grammar::kArrow);
+
+      if (not rule_idxs.empty()) {
+        out = out_rule_by_idx(*rule_idxs.begin());
+      }
+
+      for (auto idx : rule_idxs | std::views::drop(1)) {
+        out = std::format_to(out, " | ");
+        out = out_rule_by_idx(idx);
+      }
+      out = std::format_to(out, "\n");
+    }
+
+    if (not grammar.rules_.empty()) {
+      out = std::format_to(out, "Start Symbol (S)  = {} (Augmented: {})",
+                           grammar.rules_[0].rhs, grammar.rules_[0]);
+    }
+
+    out = std::format_to(
+        out,
+        "----------------------------------------------------------------\n");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::Situation> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  os << "\n## Goto Table:\n";
-  const auto& goto_table = cc.get_goto_table();
+  auto format(const lrk_parser::details::Situation& sit,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
 
-  if (goto_table.empty()) {
-    os << "  (Empty)\n";
-  } else {
-    UmapT<StateIdT, VectorT<std::pair<CharT, StateIdT>>> sorted_transitions;
-    for (const auto& pair : goto_table) {
+    out = std::format_to(out, "[Rule={}, Dot={}, Lookahead=\"", sit.rule_idx,
+                         sit.dot_pose);
+
+    if (sit.actpref.empty()) {
+      out = std::format_to(out, "ε");
+    } else {
+      out = std::format_to(out, "{}", sit.actpref);
+    }
+
+    out = std::format_to(out, "\"]");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::Situations> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    auto it = std::find(ctx.begin(), ctx.end(), '}');
+    return it;
+  }
+
+  auto format(const lrk_parser::details::Situations& sits,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
+
+    out = std::format_to(out, "{{\n");
+
+    if (not sits.empty()) {
+      out = std::format_to(out, "    {}", *sits.begin());
+    }
+
+    for (const auto& sit : sits | std::views::drop(1)) {
+      out = std::format_to(out, ",\n");
+      out = std::format_to(out, "    {}", sit);
+    }
+
+    if (not sits.empty()) {
+      out = std::format_to(out, "\n");
+    }
+
+    out = std::format_to(out, "}}");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::TransitionKey> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const lrk_parser::details::TransitionKey& tkey,
+              std::format_context& ctx) const {
+    return std::format_to(ctx.out(), "({}, {})", tkey.current_state_id,
+                          tkey.symbol);
+  }
+};
+
+template <>
+struct std::formatter<BaseGotoTableT> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const BaseGotoTableT& table_map, std::format_context& ctx) const {
+    auto out = ctx.out();
+
+    if (table_map.empty()) {
+      return std::format_to(out, "  (Empty GOTO table)\n");
+    }
+
+    lrk_parser::UmapT<StateIdT, lrk_parser::VectorT<std::pair<CharT, StateIdT>>>
+        sorted_transitions;
+    for (const auto& pair : table_map) {
       const auto& tkey = pair.first;
       const auto& next_state_id = pair.second;
       sorted_transitions[tkey.current_state_id].emplace_back(tkey.symbol,
@@ -166,137 +256,276 @@ std::ostream& lrk_parser::details::operator<<(std::ostream& os,
     }
 
     for (const auto& state_pair : sorted_transitions) {
-      const StateIdT current_state_id = state_pair.first;
+      const size_t current_state_id = state_pair.first;
       const auto& transitions = state_pair.second;
 
       for (const auto& transition : transitions) {
-        os << "  GOTO(" << current_state_id << ", " << transition.first
-           << ") = " << transition.second << "\n";
+        out = std::format_to(out, "  GOTO({}, {}) = {}\n", current_state_id,
+                             transition.first, transition.second);
       }
     }
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::CanonicalCollection> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  os << "--------------------------------\n";
-  return os;
-}
+  auto format(const lrk_parser::details::CanonicalCollection& cc,
+              std::format_context& ctx) const {
+    auto out = ctx.out();
 
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const ActionType& type) {
-  switch (type) {
-    case ActionType::Shift:
-      return os << "Shift";
-    case ActionType::Reduce:
-      return os << "Reduce";
-    case ActionType::Accept:
-      return os << "Accept";
-    // Добавьте другие типы, если они существуют, например Error
-    case ActionType::Error:
-    default:
-      return os << "Error";
-  }
-}
+    out = std::format_to(
+        out, "-------------- Canonical LR(K) Collection --------------\n");
 
-// 2. Вывод действия (Action)
-// Action: {.type, .value}
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const Action& action) {
-  switch (action.type) {
-    case ActionType::Shift:
-      // Shift to state X
-      os << "S" << action.value;
-      break;
-    case ActionType::Reduce:
-      // Reduce by rule X
-      os << "R" << action.value;
-      break;
-    case ActionType::Accept:
-      // Accept
-      os << "ACC";
-      break;
-    case ActionType::Error:
-    default:
-      // В случае ошибки или неопределенного типа
-      os << "ERR";
-      break;
-  }
-  return os;
-}
+    out = std::format_to(out, "\n## States:\n");
 
-// 3. Вывод ключа действия (ActionKey)
-// Выводит в формате: (State_ID, "Lookahead")
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const ActionKey& a_key) {
-  os << "(" << a_key.state_id << ", \"";
-  if (a_key.lookahead.empty()) {
-    os << "ε";
-  } else {
-    os << a_key.lookahead;
-  }
-  os << "\")";
-  return os;
-}
-
-// 4. Основной оператор вывода для ActionTable
-std::ostream& lrk_parser::details::operator<<(std::ostream& os,
-                                              const ActionTable& table) {
-  os << "--- LR(K) Action Table ---\n";
-
-  const auto& action_map = table.action_table_;
-
-  if (action_map.empty()) {
-    os << "  (Table is empty)\n";
-    os << "--------------------------\n";
-    return os;
-  }
-
-  // Сбор уникальных состояний и уникальных lookahead'ов
-  // Для построения таблицы в удобном матричном формате
-  UsetT<StateIdT> unique_states;
-  UsetT<StringT> unique_lookaheads;
-
-  for (const auto& pair : action_map) {
-    unique_states.insert(pair.first.state_id);
-    unique_lookaheads.insert(pair.first.lookahead);
-  }
-
-  // --- Форматированный вывод таблицы ---
-
-  // Определяем ширину столбца
-  const int kColWidth = 10;
-
-  // Строка заголовков (Lookaheads)
-  os << std::setw(kColWidth) << std::left << "State";
-  for (const auto& lookahead : unique_lookaheads) {
-    std::string header = lookahead;
-    if (lookahead.empty()) {
-      header = "ε";  // Или "$" для EOF, если используется как lookahead
+    const auto& states = cc.get_states();
+    for (size_t i = 0; i < states.size(); ++i) {
+      out = std::format_to(out, "  State {}:\n", i);
+      out = std::format_to(out, "{}\n", states[i]);
     }
-    os << std::setw(kColWidth) << std::left << header;
+
+    out = std::format_to(out, "\n## Goto Table:\n");
+    out = std::format_to(out, "{}", cc.get_goto_table());
+
+    out = std::format_to(
+        out,
+        "----------------------------------------------------------------\n");
+
+    return out;
   }
-  os << "\n";
+};
 
-  // Горизонтальная линия
-  os << std::string(kColWidth * (unique_lookaheads.size() + 1), '-') << "\n";
+template <>
+struct std::formatter<lrk_parser::details::ActionType> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
 
-  // Строки состояний
-  for (const auto& state_id : unique_states) {
-    os << std::setw(kColWidth) << std::left << state_id;
+  auto format(const lrk_parser::details::ActionType& type,
+              std::format_context& ctx) const {
+    switch (type) {
+      case lrk_parser::details::ActionType::Shift:
+        return std::format_to(ctx.out(), "Shift");
+      case lrk_parser::details::ActionType::Reduce:
+        return std::format_to(ctx.out(), "Reduce");
+      case lrk_parser::details::ActionType::Accept:
+        return std::format_to(ctx.out(), "Accept");
+      case lrk_parser::details::ActionType::Error:
+      default:
+        return std::format_to(ctx.out(), "Error");
+    }
+    std::unreachable();
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::Action> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const lrk_parser::details::Action& action,
+              std::format_context& ctx) const {
+    switch (action.type) {
+      case lrk_parser::details::ActionType::Shift:
+        return std::format_to(ctx.out(), "S{}", action.value);
+      case lrk_parser::details::ActionType::Reduce:
+        return std::format_to(ctx.out(), "R{}", action.value);
+      case lrk_parser::details::ActionType::Accept:
+        return std::format_to(ctx.out(), "ACC");
+      case lrk_parser::details::ActionType::Error:
+      default:
+        return std::format_to(ctx.out(), "ERR");
+    }
+    std::unreachable();
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::ActionKey> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const lrk_parser::details::ActionKey& a_key,
+              std::format_context& ctx) const {
+    auto out = std::format_to(ctx.out(), "({}, \"", a_key.state_id);
+
+    if (a_key.lookahead.empty()) {
+      out = std::format_to(out, "ε");
+    } else {
+      out = std::format_to(out, "{}", a_key.lookahead);
+    }
+
+    out = std::format_to(out, "\")");
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::ActionTable> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const lrk_parser::details::ActionTable& table,
+              std::format_context& ctx) const {
+    static constexpr const size_t TABLE_LINE_WIDTH = 64;
+    static constexpr const int COLUMN_WIDTH = 10;
+
+    auto out = ctx.out();
+    const auto& action_map = table.action_table_;
+
+    out = std::format_to(out, "{:-^{}}\n", " LR(K) Action Table ",
+                         TABLE_LINE_WIDTH);
+
+    if (action_map.empty()) {
+      out = std::format_to(out, "  (Table is empty)\n");
+      out = std::format_to(out, "{:-<{}}\n", "", TABLE_LINE_WIDTH);
+      return out;
+    }
+
+    lrk_parser::UsetT<StateIdT> unique_states;
+    lrk_parser::UsetT<StringT> unique_lookaheads;
+
+    for (const auto& pair : action_map) {
+      unique_states.insert(pair.first.state_id);
+      unique_lookaheads.insert(pair.first.lookahead);
+    }
+
+    out = std::format_to(out, "{:<{}}", "State", COLUMN_WIDTH);
 
     for (const auto& lookahead : unique_lookaheads) {
-      ActionKey a_key = {.state_id = state_id, .lookahead = lookahead};
-
-      std::stringstream ss;
-      if (table.has_parse_action(a_key)) {
-        ss << table.get_parse_action(a_key);
+      if (not lookahead.empty()) {
+        out = std::format_to(out, "{:<{}}", lookahead, COLUMN_WIDTH);
       } else {
-        ss << "";
+        out = std::format_to(out, "{:<{}}", "ε", COLUMN_WIDTH);
       }
-
-      os << std::setw(kColWidth) << std::left << ss.str();
     }
-    os << "\n";
+    out = std::format_to(out, "\n");
+
+    const auto kTotalCols = unique_lookaheads.size() + 1;
+    const auto kLineLength = COLUMN_WIDTH * kTotalCols;
+
+    out = std::format_to(out, "{:-<{}}\n", "", kLineLength);
+
+    for (const auto& state_id : unique_states) {
+      out = std::format_to(out, "{:<{}}", state_id, COLUMN_WIDTH);
+
+      for (const auto& lookahead : unique_lookaheads) {
+        lrk_parser::details::ActionKey a_key = {.state_id = state_id,
+                                                .lookahead = lookahead};
+
+        if (table.has_parse_action(a_key)) {
+          out = std::format_to(out, "{}", table.get_parse_action(a_key));
+        }
+      }
+      out = std::format_to(out, "\n");
+    }
+
+    out = std::format_to(out, "{:-<{}}\n", "", TABLE_LINE_WIDTH);
+
+    return out;
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::GotoTable> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
   }
 
-  os << "--------------------------------\n";
-  return os;
+  auto format(const lrk_parser::details::GotoTable& table,
+              std::format_context& ctx) const {
+    return std::format_to(ctx.out(), "{}", table.goto_table_);
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::LrkParser> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return std::find(ctx.begin(), ctx.end(), '}');
+  }
+
+  auto format(const lrk_parser::LrkParser& parser,
+              std::format_context& ctx) const {
+    static const auto kLineWidth = 64;
+    auto out = ctx.out();
+
+    out = std::format_to(out, "{:-^{}}\n", " LR(K) Parser Configuration ",
+                         kLineWidth);
+    out = std::format_to(out, "Parsing Lookahead (K) = {}\n\n", parser.k_);
+    out = std::format_to(out, "{}\n", parser.grammar_);
+    out = std::format_to(out, "{}\n", parser.goto_table_);
+    out = std::format_to(out, "{}\n", parser.action_table_);
+    out = std::format_to(out, "{:-<{}}\n", "", kLineWidth);
+    return out;
+  }
+};
+
+namespace lrk_parser::details {
+
+std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
+  return os << std::format("{}", grammar);
 }
+
+std::ostream& operator<<(std::ostream& os, const Rule& rule) {
+  return os << std::format("{}", rule);
+}
+
+std::ostream& operator<<(std::ostream& os, const UsetT<StringT>& set) {
+  return os << std::format("{}", set);
+}
+
+std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj) {
+  return os << std::format("{}", first_k_obj);
+}
+
+std::ostream& operator<<(std::ostream& os, const ActionType& type) {
+  return os << std::format("{}", type);
+}
+
+std::ostream& operator<<(std::ostream& os, const CanonicalCollection& cc) {
+  return os << std::format("{}", cc);
+}
+
+std::ostream& operator<<(std::ostream& os, const Action& action) {
+  return os << std::format("{}", action);
+}
+
+std::ostream& operator<<(std::ostream& os, const ActionTable& table) {
+  return os << std::format("{}", table);
+}
+
+std::ostream& operator<<(std::ostream& os, const ActionKey& a_key) {
+  return os << std::format("{}", a_key);
+}
+
+std::ostream& operator<<(std::ostream& os, const GotoTable& table) {
+  return os << std::format("{}", table);
+}
+
+std::ostream& operator<<(std::ostream& os, const Situation& sit) {
+  return os << std::format("{}", sit);
+}
+
+std::ostream& operator<<(std::ostream& os, const Situations& sits) {
+  return os << std::format("{}", sits);
+}
+
+std::ostream& operator<<(std::ostream& os, const TransitionKey& tkey) {
+  return os << std::format("{}", tkey);
+}
+
+std::ostream& operator<<(std::ostream& os, const LrkParser& parser) {
+  return os << std::format("{}", parser);
+}
+
+}  // namespace lrk_parser::details

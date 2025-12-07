@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
+#include <ostream>
+#include <utility>
 
 #include "config.hpp"
 #include "first_k.hpp"
@@ -34,6 +37,8 @@ class CanonicalCollection {
 
   CanonicalCollection(const Grammar& grammar, const FirstK& fist_k);
 
+  ~CanonicalCollection() = default;
+
   /*======================= Assignments ========================*/
   CanonicalCollection& operator=(const CanonicalCollection& /*unused*/) =
       default;
@@ -47,7 +52,7 @@ class CanonicalCollection {
 
   [[nodiscard]] const StatesT& get_states() const noexcept;
 
-  [[nodiscard]] const StateSetToIdT get_state_to_id_map() const noexcept;
+  [[nodiscard]] const StateSetToIdT& get_state_to_id_map() const noexcept;
 
   /*========================== Impls ===========================*/
  private:
@@ -60,12 +65,12 @@ class CanonicalCollection {
 
   [[nodiscard]] details::Situations compute_go_situation(const Grammar& grammar,
                                                          const FirstK& fist_k,
-                                                         std::size_t I_idx,
-                                                         CharT X) const;
+                                                         std::size_t state_idx,
+                                                         CharT sym) const;
 
   void build_goto_table(const Grammar& grammar, const FirstK& first_k);
 
-  std::pair<StateIdT, bool> insert_sutiations(details::Situations I);
+  std::pair<StateIdT, bool> insert_sutiations(details::Situations state);
 
   /*======================= Data fields ========================*/
   StatesT states_;

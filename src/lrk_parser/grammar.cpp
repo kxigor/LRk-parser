@@ -2,21 +2,20 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <ostream>
 #include <stdexcept>
 #include <utility>
 
 #include "lrk_parser/config.hpp"
 #include "lrk_parser/rule.hpp"
 
-lrk_parser::Grammar lrk_parser::Grammar::init_with_strs(
+lrk_parser::Grammar lrk_parser::Grammar::create_from_text(
     StringT terminals, StringT nonterminals, VectorT<StringT> rules_str,
     CharT start) {
   prepare_rules_str(rules_str);
 
   Grammar grammar;
-  grammar.terminals = {terminals.begin(), terminals.end()};
-  grammar.nonterminals = {nonterminals.begin(), nonterminals.end()};
+  grammar.terminals_ = {terminals.begin(), terminals.end()};
+  grammar.nonterminals_ = {nonterminals.begin(), nonterminals.end()};
 
   grammar.throw_if_wrong_terminal_nontermianls();
 
@@ -30,11 +29,11 @@ lrk_parser::Grammar lrk_parser::Grammar::init_with_strs(
 }
 
 bool lrk_parser::Grammar::is_terminal(CharT sym) const noexcept {
-  return terminals.contains(sym);
+  return terminals_.contains(sym);
 }
 
 bool lrk_parser::Grammar::is_nonterminal(CharT sym) const noexcept {
-  return nonterminals.contains(sym);
+  return nonterminals_.contains(sym);
 }
 
 bool lrk_parser::details::Grammar::is_valid_symbol(CharT sym) const noexcept {
@@ -42,32 +41,32 @@ bool lrk_parser::details::Grammar::is_valid_symbol(CharT sym) const noexcept {
 }
 
 bool lrk_parser::Grammar::is_rules_exists(CharT sym) const noexcept {
-  return lhs_to_rule_idxs.contains(sym);
+  return lhs_to_rule_idxs_.contains(sym);
 }
 
 const lrk_parser::VectorT<std::size_t>& lrk_parser::Grammar::get_rules_idxs(
     CharT sym) const {
-  return lhs_to_rule_idxs.at(sym);
+  return lhs_to_rule_idxs_.at(sym);
 }
 
 const lrk_parser::details::Rule& lrk_parser::Grammar::get_rule_by_idx(
     std::size_t rule_idx) const noexcept {
-  return rules[rule_idx];
+  return rules_[rule_idx];
 }
 
 const lrk_parser::VectorT<lrk_parser::details::Rule>&
 lrk_parser::details::Grammar::get_rules() const noexcept {
-  return rules;
+  return rules_;
 }
 
 const lrk_parser::UsetT<lrk_parser::CharT>&
 lrk_parser::details::Grammar::get_terminals() const noexcept {
-  return terminals;
+  return terminals_;
 }
 
 const lrk_parser::UsetT<lrk_parser::CharT>&
 lrk_parser::details::Grammar::get_nonterminals() const noexcept {
-  return nonterminals;
+  return nonterminals_;
 }
 
 lrk_parser::details::Rule lrk_parser::Grammar::rule_from_str(
@@ -81,19 +80,19 @@ void lrk_parser::Grammar::add_rule(CharT lhs, StringT rhs) {
 }
 
 void lrk_parser::Grammar::add_rule(details::Rule rule) {
-  const std::size_t kNewRuleIdx = rules.size();
-  lhs_to_rule_idxs[rule.lhs].emplace_back(kNewRuleIdx);
-  rules.emplace_back(std::move(rule));
+  const std::size_t kNewRuleIdx = rules_.size();
+  lhs_to_rule_idxs_[rule.lhs].emplace_back(kNewRuleIdx);
+  rules_.emplace_back(std::move(rule));
 }
 
 void lrk_parser::Grammar::throw_if_wrong_terminal_nontermianls() const {
-  if (terminals.contains(kStarSym) or nonterminals.contains(kStarSym)) {
+  if (terminals_.contains(kStarSym) or nonterminals_.contains(kStarSym)) {
     throw std::logic_error(
         "the @ symbol is reserved by the grammar, it cannot be used");
   }
 
-  for (const auto& terminal : terminals) {
-    if (nonterminals.contains(terminal)) {
+  for (const auto& terminal : terminals_) {
+    if (nonterminals_.contains(terminal)) {
       throw std::logic_error(
           "the set of terminal and non-terminal symbols cannot overlap");
     }
@@ -110,7 +109,7 @@ void lrk_parser::Grammar::throw_if_wrong_rule_str(
   }
   const auto& lhs_sym = rule_str[0];
 
-  if (terminals.contains(lhs_sym)) {
+  if (terminals_.contains(lhs_sym)) {
     throw std::logic_error("there can't be a terminal on the left of the rule");
   }
 

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <utility>
+#include <format>
+#include <ostream>
 
 #include "config.hpp"
 #include "grammar.hpp"
@@ -31,6 +32,11 @@ class FirstK {
 
   FirstK& operator=(FirstK&& /*unused*/) = default;
 
+  /*========================== Output ==========================*/
+  friend struct std::formatter<FirstK>;
+
+  friend std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj);
+
   /*==================== First_k Computation ===================*/
   [[nodiscard]] UsetT<StringT> compute_first_k(const StringT& str) const;
 
@@ -53,8 +59,6 @@ class FirstK {
 
   static void union_k_sets(UsetT<StringT>& lhs_set,
                            const UsetT<StringT>& rhs_set);
-
-  friend std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj);
 
   /*======================= Data Fields ========================*/
   std::size_t k_{};

@@ -23,7 +23,8 @@ Checks: >
   -misc-non-private-member-variables-in-classes,
   -hicpp-move-const-arg,
   -performance-move-const-arg,
-  -readability-identifier-length
+  -readability-identifier-length,
+  -readability-identifier-naming
 WarningsAsErrors: '*'
 
 CheckOptions:

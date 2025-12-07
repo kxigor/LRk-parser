@@ -21,7 +21,7 @@ class CanonicalCollectionTest : public ::testing::Test {
     StringT N = "SA";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = Grammar::init_with_strs(T, N, rules, Start);
+    grammar_ = Grammar::create_from_text(T, N, rules, Start);
     first_k_ = std::make_unique<FirstK>(grammar_, 1);
   }
 
@@ -30,7 +30,7 @@ class CanonicalCollectionTest : public ::testing::Test {
     StringT N = "SC";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->CC", "C->cC", "C->d"};
-    grammar_ = Grammar::init_with_strs(T, N, rules, Start);
+    grammar_ = Grammar::create_from_text(T, N, rules, Start);
     first_k_ = std::make_unique<FirstK>(grammar_, 1);
   }
 
@@ -198,7 +198,7 @@ TEST_F(CanonicalCollectionTest, NoTransitionEdgeCase) {
   StringT N = "S";
   CharT Start = 'S';
   VectorT<StringT> rules = {"S->a", "S->b"};
-  Grammar g = Grammar::init_with_strs(T, N, rules, Start);
+  Grammar g = Grammar::create_from_text(T, N, rules, Start);
   FirstK fk(g, 1);
 
   CanonicalCollection collection(g, fk);

@@ -1,5 +1,7 @@
 #include "lrk_parser/first_k.hpp"
 
+#include <utility>
+
 lrk_parser::details::FirstK::FirstK(const Grammar& grammar, std::size_t k)
     : k_(k) {
   initialize_first_k_sets(grammar);

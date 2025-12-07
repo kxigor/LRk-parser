@@ -25,7 +25,7 @@ int main() {
   // Правила: 1) E -> id = E, 2) E -> id
   VectorT<StringT> rules = {"S->SaSb", "S->"};
 
-  auto grammar = Grammar::init_with_strs(T, N, rules, Start);
+  auto grammar = Grammar::create_from_text(T, N, rules, Start);
   details::FirstK first_k(grammar, 1);
   details::CanonicalCollection lr_collection(grammar, first_k);
 
@@ -61,7 +61,8 @@ int main() {
   // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
   // auto grammar =
-  //     Grammar::init_with_strs(std::move(terminals), std::move(non_terminals),
+  //     Grammar::create_from_text(std::move(terminals),
+  //     std::move(non_terminals),
   //                             std::move(rules), start_sym);
 
   // lrk_parser::LrkParser parser;

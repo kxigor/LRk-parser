@@ -1,10 +1,14 @@
 #pragma once
 
+#include <ostream>
+
 #include "action_table.hpp"
 #include "canonical_collection.hpp"
 #include "config.hpp"
 #include "first_k.hpp"
+#include "goto_table.hpp"
 #include "grammar.hpp"
+#include "parser.hpp"
 #include "rule.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
@@ -22,6 +26,7 @@ std::ostream& operator<<(std::ostream& os, const CanonicalCollection& cc);
 std::ostream& operator<<(std::ostream& os, const ActionType& type);
 std::ostream& operator<<(std::ostream& os, const Action& action);
 std::ostream& operator<<(std::ostream& os, const ActionKey& a_key);
+std::ostream& operator<<(std::ostream& os, const GotoTable& table);
 std::ostream& operator<<(std::ostream& os, const ActionTable& table);
-
+std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
 }  // namespace lrk_parser::details
