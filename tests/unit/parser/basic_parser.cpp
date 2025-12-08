@@ -15,9 +15,16 @@ class LrkParserTest : public ::testing::Test {
   void InitParser(const StringT& terminals, const StringT& non_terminals,
                   const VectorT<StringT>& rules, CharT start_symbol,
                   std::size_t k) {
-    Grammar grammar =
-        Grammar::create_from_text(terminals, non_terminals, rules, start_symbol);
+    Grammar grammar = Grammar::create_from_text(terminals, non_terminals, rules,
+                                                start_symbol);
     parser_.fit(std::move(grammar), k);
+  }
+
+  void InitParser(const StringT& terminals, const StringT& non_terminals,
+                  const VectorT<StringT>& rules, CharT start_symbol) {
+    Grammar grammar = Grammar::create_from_text(terminals, non_terminals, rules,
+                                                start_symbol);
+    parser_.fit(std::move(grammar));
   }
 };
 
@@ -29,6 +36,16 @@ TEST_F(LrkParserTest, BasicLR1SuccessAndFailure) {
 
   ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 1); });
 
+  EXPECT_TRUE(parser_.predict("id=id")) << "Failed to parse 'id=id'";
+
+  EXPECT_TRUE(parser_.predict("id")) << "Failed to parse 'id'";
+
+  EXPECT_FALSE(parser_.predict("id=")) << "Incorrectly parsed 'id='";
+
+  EXPECT_FALSE(parser_.predict("id=id=")) << "Incorrectly parsed 'id=id='";
+
+  ASSERT_NO_THROW({ InitParser(T, N, rules, Start); });
+  
   EXPECT_TRUE(parser_.predict("id=id")) << "Failed to parse 'id=id'";
 
   EXPECT_TRUE(parser_.predict("id")) << "Failed to parse 'id'";
