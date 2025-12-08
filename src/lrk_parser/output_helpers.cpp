@@ -25,6 +25,8 @@ using Grammar = lrk_parser::Grammar;
 using StateIdT = lrk_parser::details::StateIdT;
 using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
 
+/*TODO: доработать консольный вывыод, он кривой*/
+
 template <>
 struct std::formatter<lrk_parser::details::Rule> {
   static constexpr auto parse(std::format_parse_context& ctx) {
@@ -471,7 +473,8 @@ struct std::formatter<lrk_parser::LrkParser> {
   }
 };
 
-namespace lrk_parser::details {
+namespace lrk_parser {
+namespace details {
 
 std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
   return os << std::format("{}", grammar);
@@ -524,9 +527,10 @@ std::ostream& operator<<(std::ostream& os, const Situations& sits) {
 std::ostream& operator<<(std::ostream& os, const TransitionKey& tkey) {
   return os << std::format("{}", tkey);
 }
+}  // namespace details
 
 std::ostream& operator<<(std::ostream& os, const LrkParser& parser) {
   return os << std::format("{}", parser);
 }
 
-}  // namespace lrk_parser::details
+}  // namespace lrk_parser

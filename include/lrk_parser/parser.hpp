@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstddef>
 #include <format>
+#include <ostream>
 
 #include "action_table.hpp"
 #include "config.hpp"
@@ -47,13 +48,19 @@ class LrkParser {
   /*========================== Output ==========================*/
   friend struct std::formatter<LrkParser>;
 
+  friend std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
+
   /*===================== Parser Interface =====================*/
+  void fit(Grammar grammar);
+
   void fit(Grammar grammar, std::size_t k);
 
   [[nodiscard]] bool predict(const StringT& word) const;
 
  private:
   /*=========================== Imls ===========================*/
+  void fit_impl(std::size_t k);
+
   OptionalT<details::Action> get_next_action(PredictContext& ctx) const;
   static void handle_shift_case(PredictContext& ctx, std::size_t next_state_id);
   void handle_reduce_case(PredictContext& ctx, std::size_t next_state_id) const;

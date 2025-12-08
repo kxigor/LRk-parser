@@ -20,23 +20,16 @@ using Grammar = lrk_parser::Grammar;
 using namespace lrk_parser;
 
 int main() {
-  StringT T = "ab";   // Терминалы: id, =
-  StringT N = "S";    // Нетерминал: E
-  CharT Start = 'S';  // Начальный нетерминал: E
-
-  // Правила: 1) E -> id = E, 2) E -> id
+  StringT T = "ab";
+  StringT N = "S";
+  CharT Start = 'S';
   VectorT<StringT> rules = {"S->SaSb", "S->"};
 
   auto grammar = Grammar::create_from_text(T, N, rules, Start);
-  details::FirstK first_k(grammar, 1);
-  details::CanonicalCollection lr_collection(grammar, first_k);
+  lrk_parser::LrkParser parser;
+  parser.fit(grammar, 1);
 
-  // Выводим каноническую коллекцию, чтобы увидеть ID состояний
-  std::cout << lr_collection << '\n';
-
-  details::ActionTable action_table(grammar, first_k, lr_collection);
-
-  std::cout << action_table << '\n';
+  std::cout << parser << '\n';
 
   // std::size_t n{};
   // std::cin >> n;

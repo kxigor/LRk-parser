@@ -13,8 +13,9 @@
 #include "situation.hpp"
 #include "tables_base.hpp"
 
-namespace lrk_parser::details {
+namespace lrk_parser {
 /*=========================== Fwds ===========================*/
+namespace details {
 std::ostream& operator<<(std::ostream& os, const Rule& rule);
 std::ostream& operator<<(std::ostream& os, const Situation& sit);
 std::ostream& operator<<(std::ostream& os, const Situations& sits);
@@ -28,5 +29,6 @@ std::ostream& operator<<(std::ostream& os, const Action& action);
 std::ostream& operator<<(std::ostream& os, const ActionKey& a_key);
 std::ostream& operator<<(std::ostream& os, const GotoTable& table);
 std::ostream& operator<<(std::ostream& os, const ActionTable& table);
+}  // namespace details
 std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
-}  // namespace lrk_parser::details
+}  // namespace lrk_parser
