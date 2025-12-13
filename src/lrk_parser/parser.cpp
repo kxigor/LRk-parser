@@ -1,5 +1,6 @@
 #include "lrk_parser/parser.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
@@ -16,7 +17,7 @@ using ActionType = lrk_parser::details::ActionType;
 
 void LrkParser::fit(Grammar grammar) {
   grammar_ = std::move(grammar);
-  for (std::size_t k = 0; k < std::numeric_limits<std::size_t>::max(); ++k) {
+  for (std::size_t k = 1; k < std::numeric_limits<std::size_t>::max(); ++k) {
     try {
       fit_impl(k);
       break;
@@ -28,7 +29,16 @@ void LrkParser::fit(Grammar grammar) {
 
 void LrkParser::fit(Grammar grammar, std::size_t k) {
   grammar_ = std::move(grammar);
-  fit_impl(k);
+  /*
+  Мы  это  делаем, потому что я нигде не храню лишнюю информацию по символам,
+  а   для   k = 0   таблицы   выраждаются   и   мне,  чтобы  проверять  вход,
+  нужно  явно  хардкодить  везде  Lookahead  чтобы  был  следующим  символом,
+  либо  создавать  проверки  стэка.  Если  этого  не сделать, получится, что
+  распознаётся  любой  однобуквкнный  символ. Этот хардкод, который я описал
+  эквивалентен тому, чтобы поставить k = 1, поэтому такое шение было принято
+  */
+  const std::size_t kKfinal = std::max(1UL, k);
+  fit_impl(kKfinal);
 }
 
 void lrk_parser::LrkParser::fit_impl(std::size_t k) {

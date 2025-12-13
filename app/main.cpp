@@ -20,10 +20,10 @@ using Grammar = lrk_parser::Grammar;
 using namespace lrk_parser;
 
 int main() {
-  StringT T = "ab";
-  StringT N = "SAB";
-  CharT Start = 'S';
-  VectorT<StringT> rules = {"S->AB", "A->", "A->a", "B->b"};
+  StringT T = "a";
+  StringT N = "E";
+  CharT Start = 'E';
+  VectorT<StringT> rules = {"E->a"};
 
   auto grammar = Grammar::create_from_text(T, N, rules, Start);
   // details::FirstK first_k(grammar, 1);
@@ -35,11 +35,11 @@ int main() {
   // details::ActionTable action_table(grammar, first_k, lr_collection);
 
   lrk_parser::LrkParser parser;
-  parser.fit(grammar, 1);
+  parser.fit(grammar, 0);
 
   std::cout << parser << '\n';
 
-  std::cout << parser.predict("d");
+  std::cout << parser.predict("h");
 
   // std::size_t n{};
   // std::cin >> n;

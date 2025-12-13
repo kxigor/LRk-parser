@@ -120,7 +120,7 @@ TEST_F(LrkParserTest, WorksWithK3) {
 }
 
 TEST_F(LrkParserTest, TrivialLR0Success) {
-  StringT T = "a";
+  StringT T = "ab";
   StringT N = "E";
   CharT Start = 'E';
   VectorT<StringT> rules = {"E->a"};
@@ -134,4 +134,5 @@ TEST_F(LrkParserTest, TrivialLR0Success) {
       << "Incorrectly parsed empty string with k=0";
 
   EXPECT_FALSE(parser_.predict("aa")) << "Incorrectly parsed 'aa' with k=0";
+  EXPECT_FALSE(parser_.predict("b")) << "Incorrectly parsed 'b' with k=0";
 }
