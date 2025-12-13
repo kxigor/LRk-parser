@@ -386,6 +386,7 @@ struct std::formatter<lrk_parser::details::ActionKey> {
   }
 };
 
+// NOLINTBEGIN
 template <>
 struct std::formatter<lrk_parser::details::ActionTable> {
   static constexpr auto parse(std::format_parse_context& ctx) {
@@ -398,6 +399,7 @@ struct std::formatter<lrk_parser::details::ActionTable> {
     static constexpr const int COLUMN_WIDTH = 10;
     auto out = ctx.out();
     const auto& action_map = table.action_table_;
+
     out = std::format_to(out, "{:-^{}}\n", " LR(K) Action Table ",
                          TABLE_LINE_WIDTH);
     if (action_map.empty()) {
@@ -405,32 +407,56 @@ struct std::formatter<lrk_parser::details::ActionTable> {
       out = std::format_to(out, "{:-<{}}\n", "", TABLE_LINE_WIDTH);
       return out;
     }
+
     lrk_parser::UsetT<StateIdT> unique_states;
     lrk_parser::UsetT<StringT> unique_lookaheads;
     for (const auto& pair : action_map) {
       unique_states.insert(pair.first.state_id);
       unique_lookaheads.insert(pair.first.lookahead);
     }
+
     out = std::format_to(out, "{:<{}}", "State", COLUMN_WIDTH);
     for (const auto& lookahead : unique_lookaheads) {
       if (not lookahead.empty()) {
-        out = std::format_to(out, "{:<{}}", lookahead, COLUMN_WIDTH);
+        out = std::format_to(out, "{:^{}}", lookahead, COLUMN_WIDTH);
       } else {
-        out = std::format_to(out, "{:<{}}", "ε", COLUMN_WIDTH);
+        out = std::format_to(out, "{:^{}}", "ε", COLUMN_WIDTH);
       }
     }
     out = std::format_to(out, "\n");
+
     const auto kTotalCols = unique_lookaheads.size() + 1;
     const auto kLineLength = COLUMN_WIDTH * kTotalCols;
     out = std::format_to(out, "{:-<{}}\n", "", kLineLength);
+
     for (const auto& state_id : unique_states) {
       out = std::format_to(out, "{:<{}}", state_id, COLUMN_WIDTH);
+
       for (const auto& lookahead : unique_lookaheads) {
         const lrk_parser::details::ActionKey kAKey = {.state_id = state_id,
                                                       .lookahead = lookahead};
+
+        std::array<char, COLUMN_WIDTH> buffer;
+        std::size_t content_len = 0;
+
         if (table.has_parse_action(kAKey)) {
-          out = std::format_to(out, "{}", table.get_parse_action(kAKey));
+          auto result = std::format_to_n(buffer.data(), buffer.size(), "{}",
+                                         table.get_parse_action(kAKey));
+          content_len =
+              std::min(static_cast<std::size_t>(result.size), buffer.size());
         }
+
+        int total_padding = COLUMN_WIDTH - static_cast<int>(content_len);
+        if (total_padding < 0) total_padding = 0;
+
+        int left_pad = total_padding / 2;
+        int right_pad = total_padding - left_pad;
+
+        out = std::format_to(out, "{:{}}", "", left_pad);
+
+        out = std::copy_n(buffer.data(), content_len, out);
+
+        out = std::format_to(out, "{:{}}", "", right_pad);
       }
       out = std::format_to(out, "\n");
     }
@@ -438,6 +464,7 @@ struct std::formatter<lrk_parser::details::ActionTable> {
     return out;
   }
 };
+// NOLINTEND
 
 template <>
 struct std::formatter<lrk_parser::details::GotoTable> {
