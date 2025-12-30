@@ -26,6 +26,7 @@ set(GCC_BASE_COMPILE
   -Wall -Wextra -Wpedantic # Standard, recommended warnings
   -fPIE                    # Position Independent Executable (Security)
   -fstack-protector-strong # Basic Stack Overflow protection (Security)
+  -DUNIT_TESTS
 )
 
 # Aggressive flags: Enables maximal strictness, used primarily for Debug/CI builds
@@ -48,7 +49,7 @@ set(GCC_RELEASE -O3 -DNDEBUG)                  # Full optimization
 
 # --- MSVC Compiler ---
 # Base flags: Essential warnings, treating warnings as errors (/WX), and C++ standard enforcement.
-set(MSVC_BASE_COMPILE /W4 /WX /permissive- /Zc:__cplusplus)
+set(MSVC_BASE_COMPILE /W4 /WX /permissive- /Zc:__cplusplus /DUNIT_TESTS)
 set(MSVC_DEBUG_COMPILE /Zi /Ob0 /Od /RTC1)      # Debug info, no optimization, runtime checks
 set(MSVC_RELWITHDEB /Zi /O2 /DNDEBUG)           # Debug info, moderate optimization
 set(MSVC_RELEASE /O2 /Oi /Gy /DNDEBUG /Zi /GL)  # Full optimization + Link-time code generation flags

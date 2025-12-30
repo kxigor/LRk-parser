@@ -70,12 +70,12 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
-      "name": "ci-coverage",
-      "displayName": "Release + UnitTests + Coverage",
+      "name": "dev-debug-coverage",
+      "displayName": "Debug + UnitTests + Coverage",
       "description" : "Build with GCOV flags. Static analysis is disabled for speed.",
       "inherits": ["base", "mixin-san-none"],
       "cacheVariables": { 
-        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "ON",
         "ENABLE_UNITTESTS": "ON",
         "ENABLE_FORMAT_CHECK": "OFF",
@@ -112,7 +112,7 @@
     { "name": "dev-debug-tsan", "configurePreset": "dev-debug-tsan" },
     { "name": "dev-debug-msan", "configurePreset": "dev-debug-msan" },
     { "name": "dev-debug-ubsan", "configurePreset": "dev-debug-ubsan" },
-    { "name": "ci-coverage", "configurePreset": "ci-coverage" },
+    { "name": "dev-debug-coverage", "configurePreset": "dev-debug-coverage" },
     { "name": "ci-tests-release", "configurePreset": "ci-tests-release" },
     { "name": "ci-relwithdebinfo", "configurePreset": "ci-relwithdebinfo" },
     { "name": "ci-release", "configurePreset": "ci-release" }
@@ -131,8 +131,8 @@
       "output": { "outputOnFailure": true }
     },
     {
-      "name": "ci-coverage",
-      "configurePreset": "ci-coverage",
+      "name": "dev-debug-coverage",
+      "configurePreset": "dev-debug-coverage",
       "output": { "outputOnFailure": true }
     },
     {
