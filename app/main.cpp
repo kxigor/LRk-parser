@@ -19,11 +19,25 @@ using Grammar = lrk_parser::Grammar;
 
 using namespace lrk_parser;
 
+/*
+Контрпример на EFF != FIRST:
+S->AB
+A->a
+B->CD
+B->aE
+C->ab
+D->bb
+E->bba
+
+FIRST_2(S) = {eps, a, b, c, ab, ac, ba, ca, bc}
+EFF_2(S) = {ca, cb}
+*/
+
 int main() {
-  StringT T = "a";
-  StringT N = "E";
-  CharT Start = 'E';
-  VectorT<StringT> rules = {"E->a"};
+  StringT T = "ab";
+  StringT N = "S";
+  CharT Start = 'S';
+  VectorT<StringT> rules = {"S->aSb", "S->"};
 
   auto grammar = Grammar::create_from_text(T, N, rules, Start);
   // details::FirstK first_k(grammar, 1);
@@ -35,11 +49,11 @@ int main() {
   // details::ActionTable action_table(grammar, first_k, lr_collection);
 
   lrk_parser::LrkParser parser;
-  parser.fit(grammar, 0);
+  parser.fit(grammar);
 
   std::cout << parser << '\n';
 
-  std::cout << parser.predict("h");
+  std::cout << parser.predict("aaaaaaaaaaaaaaabbbbbbbbbbbbbbb");
 
   // std::size_t n{};
   // std::cin >> n;
