@@ -24,7 +24,8 @@ Checks: >
   -hicpp-move-const-arg,
   -performance-move-const-arg,
   -readability-identifier-length,
-  -readability-identifier-naming
+  -readability-identifier-naming,
+  -portability-avoid-pragma-once
 WarningsAsErrors: '*'
 
 CheckOptions:
