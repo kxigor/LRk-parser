@@ -49,7 +49,7 @@ int main() {
   // details::ActionTable action_table(grammar, first_k, lr_collection);
 
   lrk_parser::LrkParser parser;
-  parser.fit(grammar);
+  parser.fit(grammar, 1);
 
   std::cout << parser << '\n';
 

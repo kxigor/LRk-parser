@@ -51,8 +51,6 @@ class LrkParser {
   friend std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
 
   /*===================== Parser Interface =====================*/
-  void fit(Grammar grammar);
-
   void fit(Grammar grammar, std::size_t k);
 
   [[nodiscard]] bool predict(const StringT& word) const;

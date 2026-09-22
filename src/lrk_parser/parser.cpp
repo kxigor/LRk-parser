@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <limits>
-#include <stdexcept>
 #include <utility>
 
 #include "lrk_parser/canonical_collection.hpp"
@@ -14,18 +12,6 @@
 
 using LrkParser = lrk_parser::LrkParser;
 using ActionType = lrk_parser::details::ActionType;
-
-void LrkParser::fit(Grammar grammar) {
-  grammar_ = std::move(grammar);
-  for (std::size_t k = 1; k < std::numeric_limits<std::size_t>::max(); ++k) {
-    try {
-      fit_impl(k);
-      break;
-    } catch (const std::runtime_error& /*unused*/) {  // NOLINT
-      /*TODO: специальные исключения*/
-    }
-  }
-}
 
 void LrkParser::fit(Grammar grammar, std::size_t k) {
   grammar_ = std::move(grammar);
