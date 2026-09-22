@@ -26,7 +26,7 @@ class ActionTableTest : public ::testing::Test {
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(*grammar_, 1);
+    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
     canonical_collection_ =
         std::make_unique<CanonicalCollection>(*grammar_, *first_k_);
   }
@@ -37,7 +37,7 @@ class ActionTableTest : public ::testing::Test {
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->a", "S->a"};
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(*grammar_, 1);
+    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
 
     canonical_collection_ =
         std::make_unique<CanonicalCollection>(*grammar_, *first_k_);
@@ -100,7 +100,7 @@ TEST_F(ActionTableTest, DetectsReduceReduceConflict) {
 TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
   const auto grammar =
       PreparedGrammar(ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value());
-  const FirstK first_k(grammar, 1);
+  const auto first_k = FirstK::Compute(grammar, 1);
   const CanonicalCollection collection(grammar, first_k);
 
   EXPECT_THROW((ActionTable{grammar, first_k, collection}), std::runtime_error);

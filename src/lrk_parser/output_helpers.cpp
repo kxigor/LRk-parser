@@ -122,14 +122,14 @@ struct std::formatter<lrk_parser::details::FirstK> {
     out = std::format_to(
         out,
         "--------------------- First-K Sets (K = {}) ---------------------\n",
-        first_k_obj.k_);
+        first_k_obj.Lookahead());
 
-    for (const auto& pair : first_k_obj.first_k_) {
+    for (const auto& pair : first_k_obj.Sets()) {
       const auto& symbol = pair.first;
       const auto& first_k_set = pair.second;
 
-      out = std::format_to(out, "  First_{}({}) = {}\n", first_k_obj.k_, symbol,
-                           first_k_set);
+      out = std::format_to(out, "  First_{}({}) = {}\n",
+                           first_k_obj.Lookahead(), symbol, first_k_set);
     }
 
     out = std::format_to(

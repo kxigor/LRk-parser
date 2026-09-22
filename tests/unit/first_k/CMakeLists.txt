@@ -1,5 +1,5 @@
-add_gtest(basic_firsk_k
-  SOURCES basic_firsk_k.cpp
+add_gtest(first_k
+  SOURCES first_k.cpp
   LIBRARIES
     lrk_parser
     project_options

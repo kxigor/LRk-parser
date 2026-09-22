@@ -25,7 +25,7 @@ class CanonicalCollectionTest : public ::testing::Test {
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(*grammar_, 1);
+    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
   }
 
   void SetUpRecursiveGrammar() {
@@ -34,7 +34,7 @@ class CanonicalCollectionTest : public ::testing::Test {
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->CC", "C->cC", "C->d"};
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(*grammar_, 1);
+    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
   }
 
   std::optional<PreparedGrammar> grammar_;
@@ -247,7 +247,7 @@ TEST_F(CanonicalCollectionTest, NoTransitionEdgeCase) {
   CharT Start = 'S';
   VectorT<StringT> rules = {"S->a", "S->b"};
   PreparedGrammar g = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-  FirstK fk(g, 1);
+  const auto fk = FirstK::Compute(g, 1);
 
   CanonicalCollection collection(g, fk);
 

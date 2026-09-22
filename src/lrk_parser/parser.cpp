@@ -29,7 +29,7 @@ void LrkParser::fit(const Grammar& grammar, std::size_t k) {
 
 void lrk_parser::LrkParser::fit_impl(std::size_t k) {
   k_ = k;
-  const details::FirstK kFirstK(*grammar_, k_);
+  const auto kFirstK = details::FirstK::Compute(*grammar_, k_);
   details::CanonicalCollection lr_collection(*grammar_, kFirstK);
 
   action_table_ = details::ActionTable(*grammar_, kFirstK, lr_collection);

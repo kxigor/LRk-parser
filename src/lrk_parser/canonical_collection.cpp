@@ -63,7 +63,7 @@ Situations CanonicalCollection::closure(CCC& ctx, Situations kernal_set) {
     }
     auto beta = std::span{rhs}.subspan(dot_pose + 1);
 
-    auto firsk_k = ctx.first_k.compute_first_k(beta, actpref);
+    auto firsk_k = ctx.first_k.ForSequence(beta, actpref);
 
     for (const auto& rule_B_idx : ctx.grammar.RulesFor(B)) {
       for (const auto& x : firsk_k) {

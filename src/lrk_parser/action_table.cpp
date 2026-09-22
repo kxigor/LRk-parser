@@ -66,7 +66,7 @@ void ActionTable::handle_shift_insert(ATC& ctx, StateId state_idx,
 
   if (grammar.IsTerminal(kNextSym)) {
     const auto kTail = std::span{rule.rhs}.subspan(sit.dot_pose);
-    auto eff_lookaheads = first_k.compute_first_k(kTail, sit.actpref);
+    auto eff_lookaheads = first_k.ForSequence(kTail, sit.actpref);
 
     for (const auto& u : eff_lookaheads) {
       const TransitionKey kTKey{.current_state_id = state_idx,
