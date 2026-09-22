@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -128,6 +130,51 @@ TEST_F(CanonicalCollectionTest, InsertSituations) {
   EXPECT_EQ(id1, id2);
 
   EXPECT_EQ(collection.GetStatesInternal().size() - 1, id1);
+}
+
+TEST(SituationsHashTest, EqualSetsHaveEqualHashes) {
+  const std::array<Situation, 3> items{{
+      {.rule_idx = 1, .dot_pose = 0, .actpref = "a"},
+      {.rule_idx = 1, .dot_pose = 1, .actpref = "a"},
+      {.rule_idx = 2, .dot_pose = 0, .actpref = "b"},
+  }};
+  const Situations original(items.begin(), items.end());
+  std::array<std::size_t, 3> order{0, 1, 2};
+  do {
+    SCOPED_TRACE(::testing::PrintToString(order));
+    Situations reordered;
+    for (auto index : order) {
+      reordered.insert(items[index]);
+    }
+    ASSERT_EQ(original, reordered);
+    EXPECT_EQ(SituationsHash{}(original), SituationsHash{}(reordered));
+    reordered.rehash(97);
+    ASSERT_EQ(original, reordered);
+    EXPECT_EQ(SituationsHash{}(original), SituationsHash{}(reordered));
+  } while (std::next_permutation(order.begin(), order.end()));
+}
+
+TEST_F(CanonicalCollectionTest, ReusesStateRegardlessOfInsertionOrder) {
+  SetUpRecursiveGrammar();
+  CanonicalCollectionTestAccessor collection(grammar_, *first_k_);
+  const auto initial = collection.get_states().front();
+  ASSERT_GT(initial.size(), 1U);
+  const auto state_count = collection.get_states().size();
+  const auto index_size = collection.get_state_to_id_map().size();
+  std::vector<Situation> items(initial.begin(), initial.end());
+  std::ranges::reverse(items);
+  Situations reordered(items.begin(), items.end());
+  ASSERT_EQ(initial, reordered);
+
+  for (std::size_t buckets : {2U, 31U, 97U}) {
+    SCOPED_TRACE(buckets);
+    reordered.rehash(buckets);
+    const auto [id, inserted] = collection.PublicInsertSituations(reordered);
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(id, 0U);
+    EXPECT_EQ(collection.get_states().size(), state_count);
+    EXPECT_EQ(collection.get_state_to_id_map().size(), index_size);
+  }
 }
 
 TEST_F(CanonicalCollectionTest, FullBuildRecursiveGrammar) {

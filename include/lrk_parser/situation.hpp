@@ -32,16 +32,10 @@ using Situations = UsetT<Situation, SituationHash>;
 
 struct SituationsHash {
   [[nodiscard]] std::size_t operator()(const Situations& set) const noexcept {
-    // NOLINTBEGIN
     std::size_t seed = set.size();
-
-    SituationHash situation_hasher;
-
     for (const auto& situation : set) {
-      std::size_t situation_hash = situation_hasher(situation);
-      seed ^= situation_hash + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      seed += SituationHash{}(situation);
     }
-    // NOLINTEND
     return seed;
   }
 };
