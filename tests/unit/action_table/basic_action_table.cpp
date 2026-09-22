@@ -84,7 +84,7 @@ TEST_F(ActionTableTest, BasicShiftReduceAccept) {
   EXPECT_EQ(accept_act.value, 0);
 }
 
-TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
+TEST_F(ActionTableTest, DetectsReduceReduceConflict) {
   SetUpConflictGrammar();
 
   EXPECT_THROW(
@@ -92,6 +92,15 @@ TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
         ActionTable action_table(grammar_, *first_k_, *canonical_collection_);
       },
       std::runtime_error);
+}
+
+TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
+  const auto grammar =
+      Grammar::create_from_text("a", "S", {"S->SS", "S->a"}, 'S');
+  const FirstK first_k(grammar, 1);
+  const CanonicalCollection collection(grammar, first_k);
+
+  EXPECT_THROW((ActionTable{grammar, first_k, collection}), std::runtime_error);
 }
 
 TEST_F(ActionTableTest, CopyAndMove) {
