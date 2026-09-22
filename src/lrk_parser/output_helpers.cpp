@@ -19,25 +19,56 @@
 #include "lrk_parser/tables_base.hpp"
 
 using CharT = lrk_parser::CharT;
-using Rule = lrk_parser::details::Rule;
+using Rule = lrk_parser::Rule;
 using StringT = lrk_parser::StringT;
 using Grammar = lrk_parser::Grammar;
-using StateIdT = lrk_parser::details::StateIdT;
+using StateId = lrk_parser::details::StateId;
 using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
 
 /*TODO: доработать консольный вывыод, он кривой*/
 
 template <>
-struct std::formatter<lrk_parser::details::Rule> {
+struct std::formatter<lrk_parser::details::StateId>
+    : std::formatter<std::size_t> {
+  auto format(lrk_parser::details::StateId id, std::format_context& ctx) const {
+    return std::formatter<std::size_t>::format(std::to_underlying(id), ctx);
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::RuleId>
+    : std::formatter<std::size_t> {
+  auto format(lrk_parser::details::RuleId id, std::format_context& ctx) const {
+    return std::formatter<std::size_t>::format(std::to_underlying(id), ctx);
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::details::SymbolId> {
+  static constexpr auto parse(std::format_parse_context& ctx) {
+    return ctx.begin();
+  }
+
+  static auto format(lrk_parser::details::SymbolId id,
+                     std::format_context& ctx) {
+    if (id == lrk_parser::details::kAugmentedStart) {
+      return std::format_to(ctx.out(), "<start>");
+    }
+    return std::format_to(ctx.out(), "{}",
+                          lrk_parser::details::DecodeSymbol(id));
+  }
+};
+
+template <>
+struct std::formatter<lrk_parser::Rule> {
   static constexpr auto parse(std::format_parse_context& ctx) {
     return std::ranges::find(ctx.begin(), ctx.end(), '}');
   }
 
-  static auto format(const lrk_parser::details::Rule& rule,
-                     std::format_context& ctx) {
+  static auto format(const lrk_parser::Rule& rule, std::format_context& ctx) {
     auto out = ctx.out();
 
-    out = std::format_to(out, "{} {} ", rule.lhs, lrk_parser::Grammar::kArrow);
+    out = std::format_to(out, "{} {} ", rule.lhs, "->");
 
     if (rule.rhs.empty()) {
       out = std::format_to(out, "ε");
@@ -131,51 +162,40 @@ struct std::formatter<lrk_parser::UsetT<lrk_parser::CharT>> {
 };
 
 template <>
-struct std::formatter<lrk_parser::details::Grammar> {
+struct std::formatter<lrk_parser::Grammar> {
   static constexpr auto parse(std::format_parse_context& ctx) {
-    return std::ranges::find(ctx.begin(), ctx.end(), '}');
+    return ctx.begin();
   }
 
-  static auto format(const lrk_parser::details::Grammar& grammar,
+  static auto format(const lrk_parser::Grammar& grammar,
                      std::format_context& ctx) {
-    auto out = ctx.out();
+    auto out = std::format_to(
+        ctx.out(),
+        "--- LR(k) Grammar ---\nNon-Terminals (N) = {}\nTerminals (T) = {}\n"
+        "Start Symbol (S) = {}\nProduction Rules (P):\n",
+        grammar.Nonterminals(), grammar.Terminals(), grammar.Start());
+    for (const auto& rule : grammar.Rules()) {
+      out = std::format_to(out, "  {}\n", rule);
+    }
+    return out;
+  }
+};
 
-    auto out_rule_by_idx = [&](auto rule_idx) {
-      const auto& rule = grammar.get_rule_by_idx(rule_idx);
-      return out = std::format_to(out, "{}", rule);
-    };
+template <>
+struct std::formatter<lrk_parser::details::PreparedGrammar> {
+  static constexpr auto parse(std::format_parse_context& ctx) {
+    return ctx.begin();
+  }
 
-    out = std::format_to(out, "--- LR(k) Grammar ---\n");
-    out = std::format_to(out, "Non-Terminals (N) = {{{}}}\n",
-                         grammar.nonterminals_);
-    out =
-        std::format_to(out, "Terminals (T)     = {{{}}}\n", grammar.terminals_);
-
-    out = std::format_to(out, "Production Rules (P):\n");
-
-    for (const auto& [lhs, rule_idxs] : grammar.lhs_to_rule_idxs_) {
-      out = std::format_to(out, " {} {} ", lhs, Grammar::kArrow);
-
-      if (not rule_idxs.empty()) {
-        out = out_rule_by_idx(*rule_idxs.begin());
-      }
-
-      for (auto idx : rule_idxs | std::views::drop(1)) {
-        out = std::format_to(out, " | ");
-        out = out_rule_by_idx(idx);
-      }
+  static auto format(const lrk_parser::details::PreparedGrammar& grammar,
+                     std::format_context& ctx) {
+    auto out = std::format_to(ctx.out(), "Prepared production rules:\n");
+    for (const auto& rule : grammar.Rules()) {
+      out = std::format_to(out, "  {} -> ", rule.lhs);
+      if (rule.rhs.empty()) out = std::format_to(out, "ε");
+      for (auto symbol : rule.rhs) out = std::format_to(out, "{}", symbol);
       out = std::format_to(out, "\n");
     }
-
-    if (not grammar.rules_.empty()) {
-      out = std::format_to(out, "Start Symbol (S)  = {} (Augmented: {})",
-                           grammar.rules_[0].rhs, grammar.rules_[0]);
-    }
-
-    out = std::format_to(
-        out,
-        "----------------------------------------------------------------\n");
-
     return out;
   }
 };
@@ -263,7 +283,9 @@ struct std::formatter<BaseGotoTableT> {
       return std::format_to(out, "  (Empty GOTO table)\n");
     }
 
-    lrk_parser::UmapT<StateIdT, lrk_parser::VectorT<std::pair<CharT, StateIdT>>>
+    lrk_parser::UmapT<
+        StateId,
+        lrk_parser::VectorT<std::pair<lrk_parser::details::SymbolId, StateId>>>
         sorted_transitions;
     for (const auto& pair : table_map) {
       const auto& tkey = pair.first;
@@ -408,7 +430,7 @@ struct std::formatter<lrk_parser::details::ActionTable> {
       return out;
     }
 
-    lrk_parser::UsetT<StateIdT> unique_states;
+    lrk_parser::UsetT<StateId> unique_states;
     lrk_parser::UsetT<StringT> unique_lookaheads;
     for (const auto& pair : action_map) {
       unique_states.insert(pair.first.state_id);
@@ -492,7 +514,7 @@ struct std::formatter<lrk_parser::LrkParser> {
     out = std::format_to(out, "{:-^{}}\n", " LR(K) Parser Configuration ",
                          kLineWidth);
     out = std::format_to(out, "Parsing Lookahead (K) = {}\n\n", parser.k_);
-    out = std::format_to(out, "{}\n", parser.grammar_);
+    if (parser.grammar_) out = std::format_to(out, "{}\n", *parser.grammar_);
     out = std::format_to(out, "{}\n", parser.goto_table_);
     out = std::format_to(out, "{}\n", parser.action_table_);
     out = std::format_to(out, "{:-<{}}\n", "", kLineWidth);
@@ -501,7 +523,6 @@ struct std::formatter<lrk_parser::LrkParser> {
 };
 
 namespace lrk_parser {
-namespace details {
 
 std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
   return os << std::format("{}", grammar);
@@ -510,6 +531,8 @@ std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
 std::ostream& operator<<(std::ostream& os, const Rule& rule) {
   return os << std::format("{}", rule);
 }
+
+namespace details {
 
 std::ostream& operator<<(std::ostream& os, const UsetT<StringT>& set) {
   return os << std::format("{}", set);

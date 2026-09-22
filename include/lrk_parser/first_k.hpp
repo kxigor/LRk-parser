@@ -5,8 +5,7 @@
 #include <ostream>
 
 #include "config.hpp"
-#include "grammar.hpp"
-#include "rule.hpp"
+#include "details/prepared_grammar.hpp"
 
 namespace lrk_parser::details {
 class FirstK {
@@ -23,7 +22,7 @@ class FirstK {
 
   FirstK(FirstK&& /*unused*/) = default;
 
-  FirstK(const Grammar& grammar, std::size_t k);
+  FirstK(const PreparedGrammar& grammar, std::size_t k);
 
   ~FirstK() = default;
 
@@ -38,20 +37,21 @@ class FirstK {
   friend std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj);
 
   /*==================== First_k Computation ===================*/
-  [[nodiscard]] UsetT<StringT> compute_first_k(const StringT& str) const;
+  [[nodiscard]] UsetT<StringT> compute_first_k(
+      std::span<const SymbolId> str, const StringT& lookahead = {}) const;
 
   /*========================== Impls ===========================*/
  private:
-  void initialize_first_k_sets(const Grammar& grammar);
+  void initialize_first_k_sets(const PreparedGrammar& grammar);
 
-  void compute_first_k_fixed_point(const Grammar& grammar);
+  void compute_first_k_fixed_point(const PreparedGrammar& grammar);
 
-  bool update_first_k_in_single_iteration(const Grammar& grammar);
+  bool update_first_k_in_single_iteration(const PreparedGrammar& grammar);
 
   [[nodiscard]] UsetT<StringT> compute_first_k_for_rhs(
-      const details::Rule& rule);
+      const details::PreparedRule& rule);
 
-  bool update_lhs_first_k_if_changed(const details::Rule& rule,
+  bool update_lhs_first_k_if_changed(const details::PreparedRule& rule,
                                      const UsetT<StringT>& rhs_first_k);
 
   [[nodiscard]] UsetT<StringT> concat_k_sets(
@@ -62,7 +62,7 @@ class FirstK {
 
   /*======================= Data Fields ========================*/
   std::size_t k_{};
-  UmapT<CharT, UsetT<StringT>> first_k_;
+  UmapT<SymbolId, UsetT<StringT>> first_k_;
 };
 
 }  // namespace lrk_parser::details

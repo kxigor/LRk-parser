@@ -1,15 +1,13 @@
 #pragma once
 
-#include <ostream>
-
 #include "config.hpp"
 
-namespace lrk_parser::details {
+namespace lrk_parser {
 struct Rule {
-  friend std::ostream& operator<<(std::ostream& os, const Rule& rule);
-
   CharT lhs{};
   StringT rhs;
+
+  bool operator==(const Rule&) const = default;
 };
 
-}  // namespace lrk_parser::details
+}  // namespace lrk_parser

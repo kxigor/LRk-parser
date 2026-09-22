@@ -1,5 +1,7 @@
 add_library(lrk_parser 
   grammar.cpp
+  text_grammar.cpp
+  prepared_grammar.cpp
   first_k.cpp
   canonical_collection.cpp
   goto_table.cpp

@@ -18,7 +18,7 @@
 | Инструмент | Минимальная Версия | Назначение |
 | :--- | :--- | :--- |
 | **`CMake`** | 3.25 | Система сборки |
-| **`C++`** | C++20 (GCC/Clang) | |
+| **`C++`** | C++23 (GCC/Clang) | |
 | **`Ninja`** | | Генератор сборки |
 | **`Google Test`** | (Включен в проект) | Модульное тестирование |
 | **`clang-format`** | 19 | Автоматическое форматирование кода |
@@ -91,8 +91,42 @@ build/dev-debug-coverage/coverage_report/index.html
 ### Основной Интерфейс
 
 ```cpp
-void fit(Grammar grammar, std::size_t k);
+void fit(const Grammar& grammar, std::size_t k);
 [[nodiscard]] bool predict(const StringT& word) const;
 ```
 
 Значение `k` задаёт вызывающий код; при необходимости он сам организует перебор.
+
+Грамматика создаётся через `MakeGrammar(GrammarSpec)` или текстовый адаптер `ParseGrammar`:
+
+```cpp
+#include "lrk_parser/parser.hpp"
+#include "lrk_parser/text_grammar.hpp"
+
+int main() {
+  const auto grammar = lrk_parser::ParseGrammar(
+      "ab", "S", {"S->aSb", "S->"}, 'S');
+  if (!grammar) return 1;
+
+  lrk_parser::LrkParser parser;
+  parser.fit(*grammar, 1);
+  return parser.predict("aabb") ? 0 : 1;
+}
+```
+
+Структурированный вариант той же грамматики:
+
+```cpp
+auto grammar = lrk_parser::MakeGrammar({
+    .terminals = "ab",
+    .nonterminals = "S",
+    .rules = {{'S', "aSb"}, {'S', ""}},
+    .start = 'S',
+});
+```
+
+Обе фабрики возвращают `std::expected`. `GrammarError` содержит причину, символ и, если ошибка относится к правилу, его индекс с нуля. У `ParseGrammar` ошибка — `std::variant<RuleSyntaxError, GrammarError>`; синтаксическая ошибка указывает индекс строки с неверной записью `S->rhs`.
+
+`Grammar` владеет данными и предоставляет доступ только для чтения. Проверяются алфавиты, стартовый символ и правила, включая наличие продукций у используемых нетерминалов. Порядок и дубликаты правил сохраняются. Служебное стартовое правило добавляется только во внутреннее представление парсера.
+
+Тип символа задаётся `CharT` (сейчас `char`); строки — `StringT`/`StringViewT`. Текущая реализация работает с байтами, включая `@` и `\0`; ε задаётся пустой правой частью. `MakeGrammar` сохраняет пробелы в правилах, поэтому значимые пробелы нужно объявить терминалами. `ParseGrammar` удаляет из строк правил ASCII-пробелы, табуляцию и переводы строк (` \t\n\r\f\v`).

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -9,14 +10,14 @@
 #include "lrk_parser/config.hpp"
 #include "lrk_parser/first_k.hpp"
 #include "lrk_parser/goto_table.hpp"
-#include "lrk_parser/grammar.hpp"
+#include "lrk_parser/text_grammar.hpp"
 
 using namespace lrk_parser;
 using namespace lrk_parser::details;
 
 class CanonicalCollectionBaseTest : public ::testing::Test {
  protected:
-  Grammar grammar_;
+  std::optional<PreparedGrammar> grammar_;
   std::unique_ptr<FirstK> first_k_;
 
   void SetUpSimpleGrammar() {
@@ -24,61 +25,66 @@ class CanonicalCollectionBaseTest : public ::testing::Test {
     StringT N = "SA";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = Grammar::create_from_text(T, N, rules, Start);
-    first_k_ = std::make_unique<FirstK>(grammar_, 1);
+    grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
+    first_k_ = std::make_unique<FirstK>(*grammar_, 1);
   }
 };
 
 class GotoTableTest : public CanonicalCollectionBaseTest {
  protected:
-  TransitionKey create_t_key(StateIdT current_state, CharT symbol) const {
-    return TransitionKey{.current_state_id = current_state, .symbol = symbol};
+  TransitionKey create_t_key(StateId current_state, CharT symbol) const {
+    return TransitionKey{.current_state_id = current_state,
+                         .symbol = EncodeSymbol(symbol)};
   }
 };
 
-const StateIdT TEST_SOURCE_ID = 0;
+const StateId TEST_SOURCE_ID{0};
 const CharT TEST_SYMBOL_S = 'S';
-const StateIdT TEST_TARGET_ID = 3;
 
 TEST_F(GotoTableTest, DefaultConstructor) {
   GotoTable gt;
-  TransitionKey key = create_t_key(0, 'S');
+  TransitionKey key = create_t_key(StateId{0}, 'S');
   EXPECT_FALSE(gt.has_goto_state(key));
 }
 
 TEST_F(GotoTableTest, CopyConstructorFromCanonicalCollection) {
   SetUpSimpleGrammar();
-  CanonicalCollection cc_source(grammar_, *first_k_);
+  CanonicalCollection cc_source(*grammar_, *first_k_);
 
+  const auto expected = cc_source.get_goto_table().at(
+      create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S));
   GotoTable gt(cc_source);
 
   TransitionKey key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
 
   ASSERT_TRUE(gt.has_goto_state(key));
-  EXPECT_EQ(gt.get_goto_state(key), TEST_TARGET_ID);
+  EXPECT_EQ(gt.get_goto_state(key), expected);
 }
 
 TEST_F(GotoTableTest, MoveConstructorFromCanonicalCollection) {
   SetUpSimpleGrammar();
 
-  CanonicalCollection cc_temp(grammar_, *first_k_);
+  CanonicalCollection cc_temp(*grammar_, *first_k_);
+  const auto expected =
+      cc_temp.get_goto_table().at(create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S));
   GotoTable gt(std::move(cc_temp));
 
   TransitionKey key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
 
   ASSERT_TRUE(gt.has_goto_state(key));
-  EXPECT_EQ(gt.get_goto_state(key), TEST_TARGET_ID);
+  EXPECT_EQ(gt.get_goto_state(key), expected);
 }
 
 TEST_F(GotoTableTest, HasGotoStateLogic) {
   SetUpSimpleGrammar();
-  CanonicalCollection cc(grammar_, *first_k_);
+  CanonicalCollection cc(*grammar_, *first_k_);
   GotoTable gt(cc);
 
   TransitionKey existing_key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
   EXPECT_TRUE(gt.has_goto_state(existing_key));
 
-  TransitionKey non_existing_key = create_t_key(TEST_TARGET_ID, TEST_SYMBOL_S);
+  TransitionKey non_existing_key =
+      create_t_key(gt.get_goto_state(existing_key), TEST_SYMBOL_S);
   EXPECT_FALSE(gt.has_goto_state(non_existing_key));
 
   TransitionKey unused_symbol_key = create_t_key(TEST_SOURCE_ID, 'b');
@@ -87,22 +93,23 @@ TEST_F(GotoTableTest, HasGotoStateLogic) {
 
 TEST_F(GotoTableTest, GetGotoStateLogic) {
   SetUpSimpleGrammar();
-  CanonicalCollection cc(grammar_, *first_k_);
+  CanonicalCollection cc(*grammar_, *first_k_);
   GotoTable gt(cc);
 
   TransitionKey existing_key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
-  const StateIdT& target_state = gt.get_goto_state(existing_key);
+  const StateId& target_state = gt.get_goto_state(existing_key);
 
-  EXPECT_EQ(target_state, TEST_TARGET_ID);
+  EXPECT_EQ(target_state, cc.get_goto_table().at(existing_key));
 
-  TransitionKey non_existing_key = create_t_key(TEST_TARGET_ID, TEST_SYMBOL_S);
+  TransitionKey non_existing_key =
+      create_t_key(gt.get_goto_state(existing_key), TEST_SYMBOL_S);
 
   EXPECT_THROW((void)gt.get_goto_state(non_existing_key), std::out_of_range);
 }
 
 TEST_F(GotoTableTest, CopyAssignment) {
   SetUpSimpleGrammar();
-  CanonicalCollection cc(grammar_, *first_k_);
+  CanonicalCollection cc(*grammar_, *first_k_);
   GotoTable source_gt(cc);
   GotoTable dest_gt;
 
@@ -110,12 +117,12 @@ TEST_F(GotoTableTest, CopyAssignment) {
 
   TransitionKey key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
   ASSERT_TRUE(dest_gt.has_goto_state(key));
-  EXPECT_EQ(dest_gt.get_goto_state(key), TEST_TARGET_ID);
+  EXPECT_EQ(dest_gt.get_goto_state(key), cc.get_goto_table().at(key));
 }
 
 TEST_F(GotoTableTest, MoveAssignment) {
   SetUpSimpleGrammar();
-  CanonicalCollection cc(grammar_, *first_k_);
+  CanonicalCollection cc(*grammar_, *first_k_);
   GotoTable source_gt(cc);
   GotoTable dest_gt;
 
@@ -123,5 +130,5 @@ TEST_F(GotoTableTest, MoveAssignment) {
 
   TransitionKey key = create_t_key(TEST_SOURCE_ID, TEST_SYMBOL_S);
   ASSERT_TRUE(dest_gt.has_goto_state(key));
-  EXPECT_EQ(dest_gt.get_goto_state(key), TEST_TARGET_ID);
+  EXPECT_EQ(dest_gt.get_goto_state(key), cc.get_goto_table().at(key));
 }

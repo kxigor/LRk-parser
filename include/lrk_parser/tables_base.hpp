@@ -4,16 +4,15 @@
 #include <cstdint>
 
 #include "config.hpp"
+#include "details/ids.hpp"
 
 namespace lrk_parser::details {
-
-using StateIdT = std::size_t;
 
 struct TransitionKey {
   [[nodiscard]] bool operator==(const TransitionKey& other) const = default;
 
-  StateIdT current_state_id;
-  CharT symbol;
+  StateId current_state_id;
+  SymbolId symbol;
 };
 
 struct TransitionKeyHash {
@@ -21,7 +20,8 @@ struct TransitionKeyHash {
       const TransitionKey& tkey) const noexcept {
     // NOLINTBEGIN
     std::size_t seed = 0;
-    seed ^= tkey.current_state_id + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= std::to_underlying(tkey.current_state_id) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2);
     seed ^= static_cast<std::size_t>(tkey.symbol) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2);
     // NOLINTEND
@@ -41,7 +41,7 @@ struct Action {
 struct ActionKey {
   [[nodiscard]] bool operator==(const ActionKey& other) const = default;
 
-  StateIdT state_id;
+  StateId state_id;
   StringT lookahead;
 };
 
@@ -49,7 +49,7 @@ struct ActionKeyHash {
   [[nodiscard]] std::size_t operator()(const ActionKey& key) const noexcept {
     // NOLINTBEGIN
     std::size_t seed = 0;
-    seed ^= std::hash<StateIdT>{}(key.state_id) + 0x9e3779b9 + (seed << 6) +
+    seed ^= std::hash<StateId>{}(key.state_id) + 0x9e3779b9 + (seed << 6) +
             (seed >> 2);
     for (auto c : key.lookahead) {
       seed ^= std::hash<CharT>{}(c) + 0x9e3779b9 + (seed << 6) + (seed >> 2);

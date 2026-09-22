@@ -4,6 +4,7 @@
 #include <string>
 
 #include "lrk_parser/parser.hpp"
+#include "lrk_parser/text_grammar.hpp"
 
 using namespace lrk_parser;
 using namespace lrk_parser::details;
@@ -15,8 +16,8 @@ class LrkParserTest : public ::testing::Test {
   void InitParser(const StringT& terminals, const StringT& non_terminals,
                   const VectorT<StringT>& rules, CharT start_symbol,
                   std::size_t k) {
-    Grammar grammar = Grammar::create_from_text(terminals, non_terminals, rules,
-                                                start_symbol);
+    Grammar grammar =
+        ParseGrammar(terminals, non_terminals, rules, start_symbol).value();
     parser_.fit(std::move(grammar), k);
   }
 };

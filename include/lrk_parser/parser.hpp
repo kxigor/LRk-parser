@@ -16,7 +16,7 @@ class LrkParser {
   struct PredictContext {
     explicit PredictContext(const StringT& word) : word(word) {
       stack.reserve(word.size());
-      stack.push_back(0);
+      stack.push_back(details::StateId{0});
     }
 
     StringT get_lookahead(std::size_t k) { return word.substr(cursor, k); }
@@ -25,7 +25,7 @@ class LrkParser {
     bool is_processing_word{true};
 
     std::size_t cursor{0};
-    VectorT<details::StateIdT> stack;
+    VectorT<details::StateId> stack;
 
     const StringT& word;  // NOLINT
   };
@@ -51,7 +51,7 @@ class LrkParser {
   friend std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
 
   /*===================== Parser Interface =====================*/
-  void fit(Grammar grammar, std::size_t k);
+  void fit(const Grammar& grammar, std::size_t k);
 
   [[nodiscard]] bool predict(const StringT& word) const;
 
@@ -67,7 +67,7 @@ class LrkParser {
 
   /*======================= Data fields ========================*/
   std::size_t k_{};
-  details::Grammar grammar_;
+  OptionalT<details::PreparedGrammar> grammar_;
   details::GotoTable goto_table_;
   details::ActionTable action_table_;
 };

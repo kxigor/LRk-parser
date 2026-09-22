@@ -6,8 +6,8 @@
 #include <utility>
 
 #include "config.hpp"
+#include "details/prepared_grammar.hpp"
 #include "first_k.hpp"
-#include "grammar.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
 
@@ -24,10 +24,11 @@ class CanonicalCollection {
   /*====================== Usings/Helpers ======================*/
   // NOLINTBEGIN
   struct CanonicalCollectionContext {
-    CanonicalCollectionContext(const Grammar& grammar, const FirstK& first_k)
+    CanonicalCollectionContext(const PreparedGrammar& grammar,
+                               const FirstK& first_k)
         : grammar(grammar), first_k(first_k) {}
 
-    const Grammar& grammar;
+    const PreparedGrammar& grammar;
     const FirstK& first_k;
   };
   // NOLINTEND
@@ -37,9 +38,9 @@ class CanonicalCollection {
   using Situations = details::Situations;
 
  public:
-  using BaseGotoTableT = UmapT<TransitionKey, StateIdT, TransitionKeyHash>;
+  using BaseGotoTableT = UmapT<TransitionKey, StateId, TransitionKeyHash>;
   using StatesT = VectorT<Situations>;
-  using StateSetToIdT = UmapT<Situations, StateIdT, details::SituationsHash>;
+  using StateSetToIdT = UmapT<Situations, StateId, details::SituationsHash>;
 
   /*================= Constructors/Destructors =================*/
   CanonicalCollection() = delete;
@@ -48,7 +49,7 @@ class CanonicalCollection {
 
   CanonicalCollection(CanonicalCollection&&) = default;
 
-  CanonicalCollection(const Grammar& grammar, const FirstK& first_k);
+  CanonicalCollection(const PreparedGrammar& grammar, const FirstK& first_k);
 
   ~CanonicalCollection() = default;
 
@@ -73,12 +74,12 @@ class CanonicalCollection {
 
   [[nodiscard]] static Situations closure(CCC& ctx, Situations kernal_set);
 
-  [[nodiscard]] Situations compute_go_situation(CCC& ctx, std::size_t state_idx,
-                                                CharT sym) const;
+  [[nodiscard]] Situations compute_go_situation(CCC& ctx, StateId state_idx,
+                                                SymbolId sym) const;
 
   void build_goto_table(CCC& ctx);
 
-  std::pair<StateIdT, bool> insert_sutiations(Situations state);
+  std::pair<StateId, bool> insert_sutiations(Situations state);
 
   /*======================= Data fields ========================*/
   StatesT states_;

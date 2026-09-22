@@ -36,8 +36,7 @@ class GotoTable {
   /*===================== Table Operations =====================*/
   [[nodiscard]] bool has_goto_state(const TransitionKey& t_key) const;
 
-  [[nodiscard]] const StateIdT& get_goto_state(
-      const TransitionKey& t_key) const;
+  [[nodiscard]] const StateId& get_goto_state(const TransitionKey& t_key) const;
 
   /*======================= Data Fields ========================*/
  private:

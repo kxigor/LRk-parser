@@ -13,8 +13,8 @@
 using LrkParser = lrk_parser::LrkParser;
 using ActionType = lrk_parser::details::ActionType;
 
-void LrkParser::fit(Grammar grammar, std::size_t k) {
-  grammar_ = std::move(grammar);
+void LrkParser::fit(const Grammar& grammar, std::size_t k) {
+  grammar_.emplace(grammar);
   /*
   Мы  это  делаем, потому что я нигде не храню лишнюю информацию по символам,
   а   для   k = 0   таблицы   выраждаются   и   мне,  чтобы  проверять  вход,
@@ -29,10 +29,10 @@ void LrkParser::fit(Grammar grammar, std::size_t k) {
 
 void lrk_parser::LrkParser::fit_impl(std::size_t k) {
   k_ = k;
-  const details::FirstK kFirstK(grammar_, k_);
-  details::CanonicalCollection lr_collection(grammar_, kFirstK);
+  const details::FirstK kFirstK(*grammar_, k_);
+  details::CanonicalCollection lr_collection(*grammar_, kFirstK);
 
-  action_table_ = details::ActionTable(grammar_, kFirstK, lr_collection);
+  action_table_ = details::ActionTable(*grammar_, kFirstK, lr_collection);
   goto_table_ = details::GotoTable(std::move(lr_collection));
 }
 
@@ -86,14 +86,14 @@ void LrkParser::handle_shift_case(PredictContext& ctx,
     return;
   }
 
-  ctx.stack.push_back(next_state_id);
+  ctx.stack.push_back(details::StateId{next_state_id});
 
   ++ctx.cursor;
 }
 
 void LrkParser::handle_reduce_case(PredictContext& ctx,
                                    std::size_t next_state_id) const {
-  const auto& rule = grammar_.get_rule_by_idx(next_state_id);
+  const auto& rule = grammar_->GetRule(details::RuleId{next_state_id});
   const auto kSymsToPop = rule.rhs.size();
 
   if (ctx.stack.size() < kSymsToPop + 1) {
@@ -106,7 +106,7 @@ void LrkParser::handle_reduce_case(PredictContext& ctx,
     ctx.stack.pop_back();
   }
 
-  const details::StateIdT kStateTop = ctx.stack.back();
+  const details::StateId kStateTop = ctx.stack.back();
 
   const details::TransitionKey kGotoKey{.current_state_id = kStateTop,
                                         .symbol = rule.lhs};
@@ -117,7 +117,7 @@ void LrkParser::handle_reduce_case(PredictContext& ctx,
     return;
   }
 
-  const details::StateIdT kNextState = goto_table_.get_goto_state(kGotoKey);
+  const details::StateId kNextState = goto_table_.get_goto_state(kGotoKey);
 
   ctx.stack.push_back(kNextState);
 }

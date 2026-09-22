@@ -1,139 +1,55 @@
 #include "lrk_parser/grammar.hpp"
 
-#include <algorithm>
-#include <cstddef>
-#include <stdexcept>
-#include <utility>
+#include <unordered_set>
 
-#include "lrk_parser/config.hpp"
-#include "lrk_parser/rule.hpp"
+namespace lrk_parser {
 
-lrk_parser::Grammar lrk_parser::Grammar::create_from_text(
-    StringT terminals, StringT nonterminals, VectorT<StringT> rules_str,
-    CharT start) {
-  prepare_rules_str(rules_str);
-
-  Grammar grammar;
-  grammar.terminals_ = {terminals.begin(), terminals.end()};
-  grammar.nonterminals_ = {nonterminals.begin(), nonterminals.end()};
-
-  grammar.throw_if_wrong_terminal_nontermianls();
-
-  grammar.add_rule(kStarSym, {start});
-
-  for (const auto& rule_str : rules_str) {
-    grammar.throw_if_wrong_rule_str(rule_str);
-    grammar.add_rule(rule_from_str(rule_str));
-  }
-  return grammar;
-}
-
-bool lrk_parser::Grammar::is_terminal(CharT sym) const noexcept {
-  return terminals_.contains(sym);
-}
-
-bool lrk_parser::Grammar::is_nonterminal(CharT sym) const noexcept {
-  return nonterminals_.contains(sym);
-}
-
-bool lrk_parser::details::Grammar::is_valid_symbol(CharT sym) const noexcept {
-  return is_terminal(sym) or is_nonterminal(sym);
-}
-
-bool lrk_parser::Grammar::is_rules_exists(CharT sym) const noexcept {
-  return lhs_to_rule_idxs_.contains(sym);
-}
-
-const lrk_parser::VectorT<std::size_t>& lrk_parser::Grammar::get_rules_idxs(
-    CharT sym) const {
-  return lhs_to_rule_idxs_.at(sym);
-}
-
-const lrk_parser::details::Rule& lrk_parser::Grammar::get_rule_by_idx(
-    std::size_t rule_idx) const noexcept {
-  return rules_[rule_idx];
-}
-
-const lrk_parser::VectorT<lrk_parser::details::Rule>&
-lrk_parser::details::Grammar::get_rules() const noexcept {
-  return rules_;
-}
-
-const lrk_parser::UsetT<lrk_parser::CharT>&
-lrk_parser::details::Grammar::get_terminals() const noexcept {
-  return terminals_;
-}
-
-const lrk_parser::UsetT<lrk_parser::CharT>&
-lrk_parser::details::Grammar::get_nonterminals() const noexcept {
-  return nonterminals_;
-}
-
-lrk_parser::details::Rule lrk_parser::Grammar::rule_from_str(
-    const StringT& rule_str) {
-  return details::Rule{.lhs = rule_str[0],
-                       .rhs = {rule_str.begin() + kMinSize, rule_str.end()}};
-}
-
-void lrk_parser::Grammar::add_rule(CharT lhs, StringT rhs) {
-  add_rule(details::Rule{.lhs = std::move(lhs), .rhs = std::move(rhs)});
-}
-
-void lrk_parser::Grammar::add_rule(details::Rule rule) {
-  const std::size_t kNewRuleIdx = rules_.size();
-  lhs_to_rule_idxs_[rule.lhs].emplace_back(kNewRuleIdx);
-  rules_.emplace_back(std::move(rule));
-}
-
-void lrk_parser::Grammar::throw_if_wrong_terminal_nontermianls() const {
-  if (terminals_.contains(kStarSym) or nonterminals_.contains(kStarSym)) {
-    throw std::logic_error(
-        "the @ symbol is reserved by the grammar, it cannot be used");
-  }
-
-  for (const auto& terminal : terminals_) {
-    if (nonterminals_.contains(terminal)) {
-      throw std::logic_error(
-          "the set of terminal and non-terminal symbols cannot overlap");
+std::expected<Grammar, GrammarError> MakeGrammar(GrammarSpec spec) {
+  for (CharT symbol : spec.terminals) {
+    if (spec.nonterminals.contains(symbol)) {
+      return std::unexpected(GrammarError{
+          GrammarErrorKind::OverlappingAlphabets, symbol, std::nullopt});
     }
   }
-}
 
-void lrk_parser::Grammar::throw_if_wrong_rule_str(
-    const StringT& rule_str) const {
-  if (rule_str.size() < kMinSize) {
-    throw std::logic_error("str rule requires a size of at least");
-  }
-  if (auto find_res = rule_str.find(kArrow); find_res != kArrowPos) {
-    throw std::logic_error("arrow missing or in the wrong place");
-  }
-  const auto& lhs_sym = rule_str[0];
-
-  if (terminals_.contains(lhs_sym)) {
-    throw std::logic_error("there can't be a terminal on the left of the rule");
+  if (!spec.nonterminals.contains(spec.start)) {
+    return std::unexpected(
+        GrammarError{GrammarErrorKind::InvalidStart, spec.start, std::nullopt});
   }
 
-  auto check_symbols_validity = [&](std::size_t left, std::size_t right) {
-    for (std::size_t i = left; i < right; ++i) {
-      if (not is_valid_symbol(rule_str[i])) {
-        throw std::logic_error("an unknown symbol has been encountered");
+  std::unordered_set<CharT> defined_nonterminals;
+  for (std::size_t index = 0; index < spec.rules.size(); ++index) {
+    const auto& rule = spec.rules[index];
+    if (!spec.nonterminals.contains(rule.lhs)) {
+      return std::unexpected(
+          GrammarError{GrammarErrorKind::InvalidLhs, rule.lhs, index});
+    }
+    for (CharT symbol : rule.rhs) {
+      if (!spec.terminals.contains(symbol) &&
+          !spec.nonterminals.contains(symbol)) {
+        return std::unexpected(
+            GrammarError{GrammarErrorKind::UnknownRhsSymbol, symbol, index});
       }
     }
-  };
-
-  const std::size_t kBeforArrowLeft = 0;
-  const std::size_t kBefroreArrowRight = kArrowPos;
-  check_symbols_validity(kBeforArrowLeft, kBefroreArrowRight);
-
-  const std::size_t kAfterArrowLeft = kArrowPos + kArrow.size();
-  const std::size_t kAfterArrowRight = rule_str.size();
-  check_symbols_validity(kAfterArrowLeft, kAfterArrowRight);
-}
-
-void lrk_parser::Grammar::prepare_rules_str(VectorT<StringT>& rules_str) {
-  for (auto& rule_str : rules_str) {
-    auto new_end = std::ranges::remove_if(
-        rule_str, [](auto sym) { return std::isspace(sym); });
-    rule_str.erase(new_end.begin(), rule_str.end());
+    defined_nonterminals.insert(rule.lhs);
   }
+
+  if (!defined_nonterminals.contains(spec.start)) {
+    return std::unexpected(GrammarError{GrammarErrorKind::MissingProduction,
+                                        spec.start, std::nullopt});
+  }
+
+  for (std::size_t index = 0; index < spec.rules.size(); ++index) {
+    for (CharT symbol : spec.rules[index].rhs) {
+      if (spec.nonterminals.contains(symbol) &&
+          !defined_nonterminals.contains(symbol)) {
+        return std::unexpected(
+            GrammarError{GrammarErrorKind::MissingProduction, symbol, index});
+      }
+    }
+  }
+
+  return Grammar(std::move(spec));
 }
+
+}  // namespace lrk_parser

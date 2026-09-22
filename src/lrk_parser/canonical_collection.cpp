@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "lrk_parser/config.hpp"
+#include "lrk_parser/details/prepared_grammar.hpp"
 #include "lrk_parser/first_k.hpp"
-#include "lrk_parser/grammar.hpp"
 #include "lrk_parser/situation.hpp"
 #include "lrk_parser/tables_base.hpp"
 
@@ -15,9 +15,9 @@ using BaseGotoTableT = CanonicalCollection::BaseGotoTableT;
 using StatesT = CanonicalCollection::StatesT;
 using StateSetToIdT = CanonicalCollection::StateSetToIdT;
 using Situations = lrk_parser::details::Situations;
-using StateIdT = lrk_parser::details::StateIdT;
+using StateId = lrk_parser::details::StateId;
 
-CanonicalCollection::CanonicalCollection(const Grammar& grammar,
+CanonicalCollection::CanonicalCollection(const PreparedGrammar& grammar,
                                          const FirstK& first_k) {
   CCC ctx(grammar, first_k);
   build_goto_table(ctx);
@@ -40,14 +40,8 @@ const StateSetToIdT& CanonicalCollection::get_state_to_id_map() const noexcept {
 }
 
 Situations CanonicalCollection::create_initial_situations(CCC& ctx) {
-  Situations init_situations;
-
-  const auto& init_rule_idxs = ctx.grammar.get_rules_idxs(Grammar::kStarSym);
-
-  for (const auto& rule_idx : init_rule_idxs) {
-    init_situations.emplace(details::Situation{
-        .rule_idx = rule_idx, .dot_pose = 0, .actpref = StringT{}});
-  }
+  Situations init_situations{
+      Situation{.rule_idx = kStartRule, .dot_pose = 0, .actpref = {}}};
   return closure(ctx, std::move(init_situations));
 }
 
@@ -59,19 +53,19 @@ Situations CanonicalCollection::closure(CCC& ctx, Situations kernal_set) {
   while (not queue.empty()) {
     auto [rule_idx, dot_pose, actpref] = queue.back();
     queue.pop_back();
-    const auto& rhs = ctx.grammar.get_rule_by_idx(rule_idx).rhs;
+    const auto& rhs = ctx.grammar.GetRule(rule_idx).rhs;
     if (dot_pose >= rhs.size()) {
       continue;
     }
     const auto& B = rhs[dot_pose];  // NOLINT
-    if (not ctx.grammar.is_nonterminal(B)) {
+    if (not ctx.grammar.IsNonterminal(B)) {
       continue;
     }
-    auto beta = rhs.substr(dot_pose + 1);
+    auto beta = std::span{rhs}.subspan(dot_pose + 1);
 
-    auto firsk_k = ctx.first_k.compute_first_k(beta + actpref);
+    auto firsk_k = ctx.first_k.compute_first_k(beta, actpref);
 
-    for (const auto& rule_B_idx : ctx.grammar.get_rules_idxs(B)) {
+    for (const auto& rule_B_idx : ctx.grammar.RulesFor(B)) {
       for (const auto& x : firsk_k) {
         const details::Situation kNewSit = {
             .rule_idx = rule_B_idx, .dot_pose = 0, .actpref = x};
@@ -87,12 +81,13 @@ Situations CanonicalCollection::closure(CCC& ctx, Situations kernal_set) {
 }
 
 Situations CanonicalCollection::compute_go_situation(CCC& ctx,
-                                                     std::size_t state_idx,
-                                                     CharT sym) const {
+                                                     StateId state_idx,
+                                                     SymbolId sym) const {
   Situations kernel_situations;
 
-  for (const auto& [rule_idx, dot_pose, actpref] : states_[state_idx]) {
-    const auto& rhs = ctx.grammar.get_rule_by_idx(rule_idx).rhs;
+  for (const auto& [rule_idx, dot_pose, actpref] :
+       states_[std::to_underlying(state_idx)]) {
+    const auto& rhs = ctx.grammar.GetRule(rule_idx).rhs;
     if (dot_pose >= rhs.size() or sym != rhs[dot_pose]) {
       continue;
     }
@@ -112,7 +107,7 @@ void CanonicalCollection::build_goto_table(CCC& ctx) {
     throw std::logic_error("Failed to initialize state");
   }
 
-  DequeT<StateIdT> queue;
+  DequeT<StateId> queue;
   queue.emplace_back(I0_id);
 
   while (not queue.empty()) {
@@ -138,22 +133,22 @@ void CanonicalCollection::build_goto_table(CCC& ctx) {
       goto_table_.emplace(kTKey, next_sits_id);
     };
 
-    for (const auto& T : ctx.grammar.get_terminals()) {
+    for (const auto& T : ctx.grammar.Terminals()) {
       process_symbol_transition(T);
     }
 
-    for (const auto& N : ctx.grammar.get_nonterminals()) {
+    for (const auto& N : ctx.grammar.Nonterminals()) {
       process_symbol_transition(N);
     }
   }
 }
 
-std::pair<StateIdT, bool> CanonicalCollection::insert_sutiations(
+std::pair<StateId, bool> CanonicalCollection::insert_sutiations(
     Situations state) {
   auto [it, emplace_status] =
-      state_set_to_id_.try_emplace(std::move(state), StateIdT{});
+      state_set_to_id_.try_emplace(std::move(state), StateId{});
   if (emplace_status) {
-    it->second = states_.size();
+    it->second = StateId{states_.size()};
     states_.emplace_back(it->first);
   }
   return {it->second, emplace_status};
