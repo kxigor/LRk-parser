@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
+#include <variant>
 
 #include "config.hpp"
 #include "details/ids.hpp"
@@ -29,13 +29,32 @@ struct TransitionKeyHash {
   }
 };
 
-enum class ActionType : std::uint8_t { Error, Shift, Reduce, Accept };
+using TransitionMap = UmapT<TransitionKey, StateId, TransitionKeyHash>;
+
+struct Shift {
+  bool operator==(const Shift&) const = default;
+
+  StateId next_state;
+};
+
+struct Reduce {
+  bool operator==(const Reduce&) const = default;
+
+  RuleId rule;
+};
+
+struct Accept {
+  bool operator==(const Accept&) const = default;
+};
 
 struct Action {
-  [[nodiscard]] bool operator==(const Action& other) const = default;
+  Action(Shift shift) : value(shift) {}
+  Action(Reduce reduce) : value(reduce) {}
+  Action(Accept accept) : value(accept) {}
 
-  ActionType type = ActionType::Error;
-  std::size_t value = 0;
+  bool operator==(const Action&) const = default;
+
+  std::variant<Shift, Reduce, Accept> value;
 };
 
 struct ActionKey {

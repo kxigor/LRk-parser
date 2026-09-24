@@ -6,6 +6,7 @@
 #include <ostream>
 #include <ranges>
 #include <utility>
+#include <variant>
 
 #include "lrk_parser/action_table.hpp"
 #include "lrk_parser/canonical_collection.hpp"
@@ -23,7 +24,7 @@ using Rule = lrk_parser::Rule;
 using StringT = lrk_parser::StringT;
 using Grammar = lrk_parser::Grammar;
 using StateId = lrk_parser::details::StateId;
-using BaseGotoTableT = lrk_parser::details::CanonicalCollection::TransitionMap;
+using BaseGotoTableT = lrk_parser::details::TransitionMap;
 
 /*TODO: доработать консольный вывыод, он кривой*/
 
@@ -345,29 +346,6 @@ struct std::formatter<lrk_parser::details::CanonicalCollection> {
 };
 
 template <>
-struct std::formatter<lrk_parser::details::ActionType> {
-  static constexpr auto parse(std::format_parse_context& ctx) {
-    return std::ranges::find(ctx.begin(), ctx.end(), '}');
-  }
-
-  static auto format(const lrk_parser::details::ActionType& type,
-                     std::format_context& ctx) {
-    switch (type) {
-      case lrk_parser::details::ActionType::Shift:
-        return std::format_to(ctx.out(), "Shift");
-      case lrk_parser::details::ActionType::Reduce:
-        return std::format_to(ctx.out(), "Reduce");
-      case lrk_parser::details::ActionType::Accept:
-        return std::format_to(ctx.out(), "Accept");
-      case lrk_parser::details::ActionType::Error:
-      default:
-        return std::format_to(ctx.out(), "Error");
-    }
-    std::unreachable();
-  }
-};
-
-template <>
 struct std::formatter<lrk_parser::details::Action> {
   static constexpr auto parse(std::format_parse_context& ctx) {
     return std::ranges::find(ctx.begin(), ctx.end(), '}');
@@ -375,18 +353,15 @@ struct std::formatter<lrk_parser::details::Action> {
 
   static auto format(const lrk_parser::details::Action& action,
                      std::format_context& ctx) {
-    switch (action.type) {
-      case lrk_parser::details::ActionType::Shift:
-        return std::format_to(ctx.out(), "S{}", action.value);
-      case lrk_parser::details::ActionType::Reduce:
-        return std::format_to(ctx.out(), "R{}", action.value);
-      case lrk_parser::details::ActionType::Accept:
-        return std::format_to(ctx.out(), "ACC");
-      case lrk_parser::details::ActionType::Error:
-      default:
-        return std::format_to(ctx.out(), "ERR");
+    if (const auto* shift =
+            std::get_if<lrk_parser::details::Shift>(&action.value)) {
+      return std::format_to(ctx.out(), "S{}", shift->next_state);
     }
-    std::unreachable();
+    if (const auto* reduce =
+            std::get_if<lrk_parser::details::Reduce>(&action.value)) {
+      return std::format_to(ctx.out(), "R{}", reduce->rule);
+    }
+    return std::format_to(ctx.out(), "ACC");
   }
 };
 
@@ -465,9 +440,9 @@ struct std::formatter<lrk_parser::details::ActionTable> {
         std::array<char, COLUMN_WIDTH> buffer;
         std::size_t content_len = 0;
 
-        if (table.has_parse_action(kAKey)) {
+        if (table.HasParseAction(kAKey)) {
           auto result = std::format_to_n(buffer.data(), buffer.size(), "{}",
-                                         table.get_parse_action(kAKey));
+                                         table.GetParseAction(kAKey));
           content_len =
               std::min(static_cast<std::size_t>(result.size), buffer.size());
         }
@@ -548,10 +523,6 @@ std::ostream& operator<<(std::ostream& os, const UsetT<StringT>& set) {
 
 std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj) {
   return os << std::format("{}", first_k_obj);
-}
-
-std::ostream& operator<<(std::ostream& os, const ActionType& type) {
-  return os << std::format("{}", type);
 }
 
 std::ostream& operator<<(std::ostream& os, const CanonicalCollection& cc) {

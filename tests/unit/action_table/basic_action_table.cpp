@@ -1,119 +1,141 @@
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <optional>
+#include <sstream>
 #include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "lrk_parser/action_table.hpp"
-#include "lrk_parser/canonical_collection.hpp"
-#include "lrk_parser/config.hpp"
-#include "lrk_parser/first_k.hpp"
+#include "lrk_parser/output_helpers.hpp"
 #include "lrk_parser/text_grammar.hpp"
 
-using namespace lrk_parser;
-using namespace lrk_parser::details;
+namespace lrk_parser::details {
+namespace {
 
-class ActionTableTest : public ::testing::Test {
- protected:
-  std::optional<PreparedGrammar> grammar_;
-  std::unique_ptr<FirstK> first_k_;
-  std::unique_ptr<CanonicalCollection> canonical_collection_;
+TEST(ActionTable, BuildsDistinctShiftReduceAndAcceptActions) {
+  const PreparedGrammar grammar(
+      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value());
+  const auto first = FirstK::Compute(grammar, 1);
+  const auto collection = CanonicalCollection::Build(grammar, first);
+  const auto result = ActionTable::Build(grammar, first, collection);
+  ASSERT_TRUE(result.has_value());
 
-  void SetUpSimpleGrammar() {
-    StringT T = "a";
-    StringT N = "SA";
-    CharT Start = 'S';
-    VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
-    canonical_collection_ = std::make_unique<CanonicalCollection>(
-        CanonicalCollection::Build(*grammar_, *first_k_));
-  }
+  const StateId initial{0};
+  const auto after_a =
+      collection.Transitions().at({initial, EncodeSymbol('a')});
+  const auto after_s =
+      collection.Transitions().at({initial, EncodeSymbol('S')});
 
-  void SetUpConflictGrammar() {
-    StringT T = "a";
-    StringT N = "S";
-    CharT Start = 'S';
-    VectorT<StringT> rules = {"S->a", "S->a"};
-    grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
-    first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
+  const auto& shift = result->GetParseAction({initial, "a"});
+  ASSERT_TRUE(std::holds_alternative<Shift>(shift.value));
+  EXPECT_EQ(std::get<Shift>(shift.value).next_state, after_a);
 
-    canonical_collection_ = std::make_unique<CanonicalCollection>(
-        CanonicalCollection::Build(*grammar_, *first_k_));
-  }
-};
+  const auto& reduce = result->GetParseAction({after_a, ""});
+  ASSERT_TRUE(std::holds_alternative<Reduce>(reduce.value));
+  EXPECT_EQ(std::get<Reduce>(reduce.value).rule, RuleId{2});
 
-TEST_F(ActionTableTest, BasicShiftReduceAccept) {
-  SetUpSimpleGrammar();
+  const auto& accept = result->GetParseAction({after_s, ""});
+  EXPECT_TRUE(std::holds_alternative<Accept>(accept.value));
+  EXPECT_FALSE(result->HasParseAction({initial, ""}));
 
-  ActionTable action_table(*grammar_, *first_k_, *canonical_collection_);
-
-  const auto& goto_table = canonical_collection_->Transitions();
-  StateId state_0{0};
-
-  ActionKey shift_key{.state_id = state_0, .lookahead = "a"};
-
-  ASSERT_TRUE(action_table.has_parse_action(shift_key));
-  Action shift_act = action_table.get_parse_action(shift_key);
-
-  EXPECT_EQ(shift_act.type, ActionType::Shift);
-  TransitionKey goto_key{.current_state_id = state_0,
-                         .symbol = EncodeSymbol('a')};
-  ASSERT_TRUE(goto_table.contains(goto_key));
-  EXPECT_EQ(shift_act.value, std::to_underlying(goto_table.at(goto_key)));
-
-  StateId state_after_a = goto_table.at(goto_key);
-
-  ActionKey reduce_key{.state_id = state_after_a, .lookahead = ""};
-
-  ASSERT_TRUE(action_table.has_parse_action(reduce_key));
-  Action reduce_act = action_table.get_parse_action(reduce_key);
-
-  EXPECT_EQ(reduce_act.type, ActionType::Reduce);
-  EXPECT_EQ(reduce_act.value, 2);
-
-  TransitionKey goto_S_key{.current_state_id = state_0,
-                           .symbol = EncodeSymbol('S')};
-  ASSERT_TRUE(goto_table.contains(goto_S_key));
-  StateId state_after_S = goto_table.at(goto_S_key);
-
-  ActionKey accept_key{.state_id = state_after_S, .lookahead = ""};
-
-  ASSERT_TRUE(action_table.has_parse_action(accept_key));
-  Action accept_act = action_table.get_parse_action(accept_key);
-
-  EXPECT_EQ(accept_act.type, ActionType::Accept);
-  EXPECT_EQ(accept_act.value, 0);
+  std::ostringstream output;
+  output << shift << ' ' << reduce << ' ' << accept;
+  EXPECT_EQ(output.str(),
+            "S" + std::to_string(std::to_underlying(after_a)) + " R2 ACC");
 }
 
-TEST_F(ActionTableTest, DetectsReduceReduceConflict) {
-  SetUpConflictGrammar();
+TEST(ActionTable, ReportsOwningReduceReduceConflict) {
+  const auto result = [] {
+    const PreparedGrammar grammar(
+        ParseGrammar("a", "S", {"S->a", "S->a"}, 'S').value());
+    const auto first = FirstK::Compute(grammar, 2);
+    const auto collection = CanonicalCollection::Build(grammar, first);
+    const auto after_a =
+        collection.Transitions().at({StateId{0}, EncodeSymbol('a')});
+    auto built = ActionTable::Build(grammar, first, collection);
+    EXPECT_FALSE(built.has_value());
+    return std::pair{std::move(built.error()), after_a};
+  }();
 
-  EXPECT_THROW(
-      {
-        ActionTable action_table(*grammar_, *first_k_, *canonical_collection_);
-      },
-      std::runtime_error);
+  const auto& [conflict, after_a] = result;
+  EXPECT_EQ(conflict.k, 2);
+  EXPECT_EQ(conflict.state, after_a);
+  EXPECT_EQ(conflict.lookahead, "");
+  EXPECT_EQ(conflict.existing.situation.lookahead, "");
+  EXPECT_EQ(conflict.incoming.situation.lookahead, "");
+  EXPECT_EQ(conflict.existing.situation.dot, 1);
+  EXPECT_EQ(conflict.incoming.situation.dot, 1);
+  EXPECT_EQ(conflict.existing.rule.lhs, EncodeSymbol('S'));
+  EXPECT_EQ(conflict.incoming.rule.lhs, EncodeSymbol('S'));
+  EXPECT_EQ(conflict.existing.rule.rhs,
+            (std::vector<SymbolId>{EncodeSymbol('a')}));
+  EXPECT_EQ(conflict.incoming.rule.rhs, conflict.existing.rule.rhs);
+
+  const auto& first_reduce = std::get<Reduce>(conflict.existing.action.value);
+  const auto& second_reduce = std::get<Reduce>(conflict.incoming.action.value);
+  EXPECT_EQ(first_reduce.rule, conflict.existing.situation.rule);
+  EXPECT_EQ(second_reduce.rule, conflict.incoming.situation.rule);
+  EXPECT_NE(first_reduce.rule, second_reduce.rule);
 }
 
-TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
-  const auto grammar =
-      PreparedGrammar(ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value());
-  const auto first_k = FirstK::Compute(grammar, 1);
-  const auto collection = CanonicalCollection::Build(grammar, first_k);
+TEST(ActionTable, ReportsShiftReduceConflictWithRuleSources) {
+  const PreparedGrammar grammar(
+      ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value());
+  const auto first = FirstK::Compute(grammar, 1);
+  const auto collection = CanonicalCollection::Build(grammar, first);
+  const auto result = ActionTable::Build(grammar, first, collection);
+  ASSERT_FALSE(result.has_value());
 
-  EXPECT_THROW((ActionTable{grammar, first_k, collection}), std::runtime_error);
+  const auto& conflict = result.error();
+  EXPECT_EQ(conflict.k, 1);
+  EXPECT_EQ(conflict.lookahead, "a");
+  EXPECT_NE(conflict.existing.action, conflict.incoming.action);
+  EXPECT_TRUE(std::holds_alternative<Shift>(conflict.existing.action.value) ||
+              std::holds_alternative<Shift>(conflict.incoming.action.value));
+  EXPECT_TRUE(std::holds_alternative<Reduce>(conflict.existing.action.value) ||
+              std::holds_alternative<Reduce>(conflict.incoming.action.value));
+  EXPECT_EQ(conflict.existing.rule.lhs,
+            grammar.GetRule(conflict.existing.situation.rule).lhs);
+  EXPECT_EQ(conflict.existing.rule.rhs,
+            grammar.GetRule(conflict.existing.situation.rule).rhs);
+  EXPECT_EQ(conflict.incoming.rule.lhs,
+            grammar.GetRule(conflict.incoming.situation.rule).lhs);
+  EXPECT_EQ(conflict.incoming.rule.rhs,
+            grammar.GetRule(conflict.incoming.situation.rule).rhs);
 }
 
-TEST_F(ActionTableTest, CopyAndMove) {
-  SetUpSimpleGrammar();
-  ActionTable src_table(*grammar_, *first_k_, *canonical_collection_);
+TEST(ActionTable, ReportsAcceptReduceConflict) {
+  const PreparedGrammar grammar(ParseGrammar("a", "S", {"S->S"}, 'S').value());
+  const auto first = FirstK::Compute(grammar, 1);
+  const auto collection = CanonicalCollection::Build(grammar, first);
+  const auto result = ActionTable::Build(grammar, first, collection);
+  ASSERT_FALSE(result.has_value());
 
-  ActionTable copy_table = src_table;
-  ActionKey key{.state_id = StateId{0}, .lookahead = "a"};
-  EXPECT_TRUE(copy_table.has_parse_action(key));
-
-  ActionTable move_table = std::move(src_table);
-  EXPECT_TRUE(move_table.has_parse_action(key));
+  const auto& conflict = result.error();
+  const auto after_s =
+      collection.Transitions().at({StateId{0}, EncodeSymbol('S')});
+  EXPECT_EQ(conflict.state, after_s);
+  EXPECT_EQ(conflict.lookahead, "");
+  EXPECT_TRUE(std::holds_alternative<Accept>(conflict.existing.action.value) ||
+              std::holds_alternative<Accept>(conflict.incoming.action.value));
+  EXPECT_TRUE(std::holds_alternative<Reduce>(conflict.existing.action.value) ||
+              std::holds_alternative<Reduce>(conflict.incoming.action.value));
 }
+
+TEST(ActionTable, CanCopyAndMoveBuiltTable) {
+  const PreparedGrammar grammar(
+      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value());
+  const auto first = FirstK::Compute(grammar, 1);
+  const auto collection = CanonicalCollection::Build(grammar, first);
+  auto built = ActionTable::Build(grammar, first, collection);
+  ASSERT_TRUE(built.has_value());
+
+  const auto copy = *built;
+  const auto moved = std::move(*built);
+  const ActionKey key{StateId{0}, "a"};
+  EXPECT_EQ(copy.GetParseAction(key), moved.GetParseAction(key));
+}
+
+}  // namespace
+}  // namespace lrk_parser::details

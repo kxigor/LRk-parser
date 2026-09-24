@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
+#include <variant>
 
 #include "lrk_parser/canonical_collection.hpp"
 #include "lrk_parser/config.hpp"
@@ -11,7 +13,6 @@
 #include "lrk_parser/tables_base.hpp"
 
 using LrkParser = lrk_parser::LrkParser;
-using ActionType = lrk_parser::details::ActionType;
 
 void LrkParser::fit(const Grammar& grammar, std::size_t k) {
   grammar_.emplace(grammar);
@@ -32,8 +33,13 @@ void lrk_parser::LrkParser::fit_impl(std::size_t k) {
   const auto kFirstK = details::FirstK::Compute(*grammar_, k_);
   auto lr_collection = details::CanonicalCollection::Build(*grammar_, kFirstK);
 
-  action_table_ = details::ActionTable(*grammar_, kFirstK, lr_collection);
-  goto_table_ = details::GotoTable(std::move(lr_collection));
+  auto actions = details::ActionTable::Build(*grammar_, kFirstK, lr_collection);
+  if (!actions) {
+    throw std::runtime_error("LR(k) conflict");
+  }
+  action_table_ = std::move(*actions);
+  goto_table_ = details::GotoTable::Build(
+      *grammar_, std::move(lr_collection).TakeTransitions());
 }
 
 bool LrkParser::predict(const StringT& word) const {
@@ -45,15 +51,14 @@ bool LrkParser::predict(const StringT& word) const {
       break;
     }
 
-    // clang-format off
-    switch (action_res->type) {
-      case ActionType::Shift  : { handle_shift_case (ctx, action_res->value); } break;
-      case ActionType::Reduce : { handle_reduce_case(ctx, action_res->value); } break;
-      case ActionType::Accept : { handle_accept_case(ctx);                    } break;
-      case ActionType::Error  : { handle_error_case (ctx);                    } break;
-      default                 : { std::unreachable();                         } break;
+    if (const auto* shift = std::get_if<details::Shift>(&action_res->value)) {
+      handle_shift_case(ctx, std::to_underlying(shift->next_state));
+    } else if (const auto* reduce =
+                   std::get_if<details::Reduce>(&action_res->value)) {
+      handle_reduce_case(ctx, std::to_underlying(reduce->rule));
+    } else {
+      handle_accept_case(ctx);
     }
-    // clang-format on
   }
 
   return ctx.is_word_recognized;
@@ -71,11 +76,11 @@ lrk_parser::OptionalT<lrk_parser::details::Action> LrkParser::get_next_action(
   const auto kAKey =
       details::ActionKey{.state_id = kCurrentStateId, .lookahead = u};
 
-  if (not action_table_.has_parse_action(kAKey)) {
+  if (not action_table_.HasParseAction(kAKey)) {
     return {};
   }
 
-  return action_table_.get_parse_action(kAKey);
+  return action_table_.GetParseAction(kAKey);
 }
 
 void LrkParser::handle_shift_case(PredictContext& ctx,
@@ -111,13 +116,13 @@ void LrkParser::handle_reduce_case(PredictContext& ctx,
   const details::TransitionKey kGotoKey{.current_state_id = kStateTop,
                                         .symbol = rule.lhs};
 
-  if (not goto_table_.has_goto_state(kGotoKey)) {
+  if (not goto_table_.HasGotoState(kGotoKey)) {
     ctx.is_processing_word = false;
     ctx.is_word_recognized = false;
     return;
   }
 
-  const details::StateId kNextState = goto_table_.get_goto_state(kGotoKey);
+  const details::StateId kNextState = goto_table_.GetGotoState(kGotoKey);
 
   ctx.stack.push_back(kNextState);
 }
@@ -125,9 +130,4 @@ void LrkParser::handle_reduce_case(PredictContext& ctx,
 void LrkParser::handle_accept_case(PredictContext& ctx) {
   ctx.is_processing_word = false;
   ctx.is_word_recognized = (ctx.cursor == ctx.word.size());
-}
-
-void LrkParser::handle_error_case(PredictContext& ctx) {
-  ctx.is_processing_word = false;
-  ctx.is_word_recognized = false;
 }

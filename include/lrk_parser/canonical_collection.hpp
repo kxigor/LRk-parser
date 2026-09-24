@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -13,9 +12,6 @@ namespace lrk_parser::details {
 
 class CanonicalCollection {
  public:
-  using TransitionMap =
-      std::unordered_map<TransitionKey, StateId, TransitionKeyHash>;
-
   [[nodiscard]] static CanonicalCollection Build(const PreparedGrammar& grammar,
                                                  const FirstK& first);
 

@@ -1,116 +1,87 @@
 #include "lrk_parser/action_table.hpp"
 
-#include <cstddef>
-#include <format>
-#include <stdexcept>
+#include <optional>
+#include <span>
+#include <unordered_map>
+#include <utility>
 
-#include "lrk_parser/canonical_collection.hpp"
-#include "lrk_parser/config.hpp"
-#include "lrk_parser/details/prepared_grammar.hpp"
-#include "lrk_parser/first_k.hpp"
-#include "lrk_parser/tables_base.hpp"
+namespace lrk_parser::details {
+namespace {
 
-using ActionTable = lrk_parser::details::ActionTable;
-
-ActionTable::ActionTable(const PreparedGrammar& grammar, const FirstK& first_k,
-                         const CanonicalCollection& lr_collection) {
-  ATC ctx(grammar, first_k, lr_collection);
-  build_action_table(ctx);
+ActionSource MakeSource(const PreparedGrammar& grammar, Action action,
+                        const Situation& situation) {
+  return {std::move(action), situation, grammar.GetRule(situation.rule)};
 }
 
-bool ActionTable::has_parse_action(const ActionKey& a_key) const {
-  return action_table_.contains(a_key);
-}
+}  // namespace
 
-const lrk_parser::details::Action& ActionTable::get_parse_action(
-    const ActionKey& a_key) const {
-  return action_table_.at(a_key);
-}
+std::expected<ActionTable, ActionConflict> ActionTable::Build(
+    const PreparedGrammar& grammar, const FirstK& first,
+    const CanonicalCollection& collection) {
+  ActionTable result;
+  std::unordered_map<ActionKey, Situation, ActionKeyHash> origins;
 
-void ActionTable::build_action_table(ATC& ctx) {
-  const auto& states = ctx.lr_collection.States();
+  auto insert =
+      [&](StateId state, StringT lookahead, Action action,
+          const Situation& situation) -> std::optional<ActionConflict> {
+    ActionKey key{state, std::move(lookahead)};
+    const auto [it, inserted] = result.action_table_.try_emplace(key, action);
+    if (inserted) {
+      origins.emplace(std::move(key), situation);
+      return std::nullopt;
+    }
+    if (it->second == action) {
+      return std::nullopt;
+    }
+    return ActionConflict{first.Lookahead(), state, key.lookahead,
+                          MakeSource(grammar, it->second, origins.at(key)),
+                          MakeSource(grammar, std::move(action), situation)};
+  };
 
-  for (std::size_t state_idx = 0; state_idx < states.size(); ++state_idx) {
-    process_state_situations(ctx, StateId{state_idx});
-  }
-}
-
-void ActionTable::process_state_situations(ATC& ctx, StateId state_idx) {
-  const auto& states = ctx.lr_collection.States();
-  const auto& grammar = ctx.grammar;
-
-  for (const auto& sit : states[std::to_underlying(state_idx)]) {
-    const auto& rule = grammar.GetRule(sit.rule);
-
-    if (sit.dot < rule.rhs.size()) {
-      handle_shift_insert(ctx, state_idx, sit, rule);
-
-    } else {
-      if (sit.rule == kStartRule) {
-        handle_accept_insert(state_idx, sit);
+  const auto& states = collection.States();
+  const auto& transitions = collection.Transitions();
+  for (std::size_t index = 0; index < states.size(); ++index) {
+    const StateId state{index};
+    for (const auto& situation : states[index]) {
+      const auto& rule = grammar.GetRule(situation.rule);
+      if (situation.dot < rule.rhs.size()) {
+        const auto symbol = rule.rhs[situation.dot];
+        if (!grammar.IsTerminal(symbol)) {
+          continue;
+        }
+        const auto target = transitions.at({state, symbol});
+        const auto tail = std::span{rule.rhs}.subspan(situation.dot);
+        for (const auto& lookahead :
+             first.ForSequence(tail, situation.lookahead)) {
+          if (auto conflict =
+                  insert(state, lookahead, Action{Shift{target}}, situation)) {
+            return std::unexpected(std::move(*conflict));
+          }
+        }
+      } else if (situation.rule == kStartRule) {
+        if (situation.lookahead.empty()) {
+          if (auto conflict = insert(state, situation.lookahead,
+                                     Action{Accept{}}, situation)) {
+            return std::unexpected(std::move(*conflict));
+          }
+        }
       } else {
-        handle_reduce_insert(state_idx, sit);
+        if (auto conflict = insert(state, situation.lookahead,
+                                   Action{Reduce{situation.rule}}, situation)) {
+          return std::unexpected(std::move(*conflict));
+        }
       }
     }
   }
+  return result;
 }
 
-void ActionTable::handle_shift_insert(ATC& ctx, StateId state_idx,
-                                      const Situation& sit,
-                                      const PreparedRule& rule) {
-  const auto& grammar = ctx.grammar;
-  const auto& goto_table = ctx.lr_collection.Transitions();
-  const auto& first_k = ctx.first_k;
-
-  const SymbolId kNextSym = rule.rhs[sit.dot];
-
-  if (grammar.IsTerminal(kNextSym)) {
-    const auto kTail = std::span{rule.rhs}.subspan(sit.dot);
-    auto eff_lookaheads = first_k.ForSequence(kTail, sit.lookahead);
-
-    for (const auto& u : eff_lookaheads) {
-      const TransitionKey kTKey{.current_state_id = state_idx,
-                                .symbol = kNextSym};
-      if (goto_table.contains(kTKey)) {
-        const StateId kNextState = goto_table.at(kTKey);
-        add_action_checked(state_idx, u,
-                           Action{.type = ActionType::Shift,
-                                  .value = std::to_underlying(kNextState)});
-      }
-    }
-  }
+bool ActionTable::HasParseAction(const ActionKey& key) const {
+  return action_table_.contains(key);
 }
 
-void ActionTable::handle_accept_insert(StateId state_idx,
-                                       const Situation& sit) {
-  if (sit.lookahead.empty()) {
-    add_action_checked(state_idx, sit.lookahead,
-                       Action{.type = ActionType::Accept, .value = 0});
-  }
+const Action& ActionTable::GetParseAction(const ActionKey& key) const {
+  return action_table_.at(key);
 }
 
-void ActionTable::handle_reduce_insert(StateId state_idx,
-                                       const Situation& sit) {
-  add_action_checked(state_idx, sit.lookahead,
-                     Action{.type = ActionType::Reduce,
-                            .value = std::to_underlying(sit.rule)});
-}
-
-void lrk_parser::details::ActionTable::add_action_checked(
-    StateId state, const StringT& lookahead, Action new_action) {
-  /*TODO: remove ugly code*/
-  const ActionKey kAKey{.state_id = state, .lookahead = lookahead};
-  if (action_table_.contains(kAKey)) {
-    const auto& existing = action_table_.at(kAKey);
-    if (existing == new_action) {
-      return;
-    }
-
-    throw std::runtime_error(std::format(
-        "LR(k) Conflict at state {}, lookahead '{}': existing type {}, new "
-        "type {}",
-        std::to_underlying(state), lookahead, static_cast<int>(existing.type),
-        static_cast<int>(new_action.type)));
-  }
-  action_table_[kAKey] = new_action;
-}
+}  // namespace lrk_parser::details

@@ -58,7 +58,6 @@ class LrkParser {
   static void handle_shift_case(PredictContext& ctx, std::size_t next_state_id);
   void handle_reduce_case(PredictContext& ctx, std::size_t next_state_id) const;
   static void handle_accept_case(PredictContext& ctx);
-  static void handle_error_case(PredictContext& ctx);
 
   /*======================= Data fields ========================*/
   std::size_t k_{};
