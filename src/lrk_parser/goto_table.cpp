@@ -7,10 +7,10 @@
 
 lrk_parser::details::GotoTable::GotoTable(
     const CanonicalCollection& lr_colletion)
-    : goto_table_(lr_colletion.get_goto_table()) {}
+    : goto_table_(lr_colletion.Transitions()) {}
 
 lrk_parser::details::GotoTable::GotoTable(CanonicalCollection&& lr_colletion)
-    : goto_table_(std::move(lr_colletion).take_goto_table()) {}
+    : goto_table_(std::move(lr_colletion).TakeTransitions()) {}
 
 bool lrk_parser::details::GotoTable::has_goto_state(
     const TransitionKey& t_key) const {

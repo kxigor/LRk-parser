@@ -28,7 +28,7 @@ const lrk_parser::details::Action& ActionTable::get_parse_action(
 }
 
 void ActionTable::build_action_table(ATC& ctx) {
-  const auto& states = ctx.lr_collection.get_states();
+  const auto& states = ctx.lr_collection.States();
 
   for (std::size_t state_idx = 0; state_idx < states.size(); ++state_idx) {
     process_state_situations(ctx, StateId{state_idx});
@@ -36,17 +36,17 @@ void ActionTable::build_action_table(ATC& ctx) {
 }
 
 void ActionTable::process_state_situations(ATC& ctx, StateId state_idx) {
-  const auto& states = ctx.lr_collection.get_states();
+  const auto& states = ctx.lr_collection.States();
   const auto& grammar = ctx.grammar;
 
   for (const auto& sit : states[std::to_underlying(state_idx)]) {
-    const auto& rule = grammar.GetRule(sit.rule_idx);
+    const auto& rule = grammar.GetRule(sit.rule);
 
-    if (sit.dot_pose < rule.rhs.size()) {
+    if (sit.dot < rule.rhs.size()) {
       handle_shift_insert(ctx, state_idx, sit, rule);
 
     } else {
-      if (sit.rule_idx == kStartRule) {
+      if (sit.rule == kStartRule) {
         handle_accept_insert(state_idx, sit);
       } else {
         handle_reduce_insert(state_idx, sit);
@@ -59,14 +59,14 @@ void ActionTable::handle_shift_insert(ATC& ctx, StateId state_idx,
                                       const Situation& sit,
                                       const PreparedRule& rule) {
   const auto& grammar = ctx.grammar;
-  const auto& goto_table = ctx.lr_collection.get_goto_table();
+  const auto& goto_table = ctx.lr_collection.Transitions();
   const auto& first_k = ctx.first_k;
 
-  const SymbolId kNextSym = rule.rhs[sit.dot_pose];
+  const SymbolId kNextSym = rule.rhs[sit.dot];
 
   if (grammar.IsTerminal(kNextSym)) {
-    const auto kTail = std::span{rule.rhs}.subspan(sit.dot_pose);
-    auto eff_lookaheads = first_k.ForSequence(kTail, sit.actpref);
+    const auto kTail = std::span{rule.rhs}.subspan(sit.dot);
+    auto eff_lookaheads = first_k.ForSequence(kTail, sit.lookahead);
 
     for (const auto& u : eff_lookaheads) {
       const TransitionKey kTKey{.current_state_id = state_idx,
@@ -83,17 +83,17 @@ void ActionTable::handle_shift_insert(ATC& ctx, StateId state_idx,
 
 void ActionTable::handle_accept_insert(StateId state_idx,
                                        const Situation& sit) {
-  if (sit.actpref.empty()) {
-    add_action_checked(state_idx, sit.actpref,
+  if (sit.lookahead.empty()) {
+    add_action_checked(state_idx, sit.lookahead,
                        Action{.type = ActionType::Accept, .value = 0});
   }
 }
 
 void ActionTable::handle_reduce_insert(StateId state_idx,
                                        const Situation& sit) {
-  add_action_checked(state_idx, sit.actpref,
+  add_action_checked(state_idx, sit.lookahead,
                      Action{.type = ActionType::Reduce,
-                            .value = std::to_underlying(sit.rule_idx)});
+                            .value = std::to_underlying(sit.rule)});
 }
 
 void lrk_parser::details::ActionTable::add_action_checked(

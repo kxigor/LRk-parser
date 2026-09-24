@@ -21,7 +21,9 @@ std::expected<Grammar, TextGrammarError> ParseGrammar(
     spec.rules.push_back({text[0], text.substr(3)});
   }
   auto grammar = MakeGrammar(std::move(spec));
-  if (!grammar) return std::unexpected(grammar.error());
+  if (!grammar) {
+    return std::unexpected(grammar.error());
+  }
   return std::move(*grammar);
 }
 

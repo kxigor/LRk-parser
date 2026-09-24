@@ -176,8 +176,9 @@ TEST(FirstK, RuleAndAlphabetOrderDoNotChangeSets) {
   std::ranges::reverse(spec.nonterminals);
 
   do {
-    for (std::size_t i = 0; i < order.size(); ++i)
+    for (std::size_t i = 0; i < order.size(); ++i) {
       spec.rules[i] = rules[order[i]];
+    }
     const auto first =
         FirstK::Compute(PreparedGrammar(MakeGrammar(spec).value()), 3);
     EXPECT_EQ(first.Sets(), reference.Sets());

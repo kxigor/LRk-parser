@@ -1,90 +1,34 @@
 #pragma once
 
-#include <cassert>
-#include <cstddef>
-#include <ostream>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
-#include "config.hpp"
 #include "details/prepared_grammar.hpp"
 #include "first_k.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
 
 namespace lrk_parser::details {
+
 class CanonicalCollection {
-  /*========================= Friends ==========================*/
-#ifdef UNIT_TESTS
-  friend class CanonicalCollectionTestAccessor;
-#endif
-
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const CanonicalCollection& cc);
-
-  /*====================== Usings/Helpers ======================*/
-  // NOLINTBEGIN
-  struct CanonicalCollectionContext {
-    CanonicalCollectionContext(const PreparedGrammar& grammar,
-                               const FirstK& first_k)
-        : grammar(grammar), first_k(first_k) {}
-
-    const PreparedGrammar& grammar;
-    const FirstK& first_k;
-  };
-  // NOLINTEND
-
-  using CCC = CanonicalCollectionContext;
-
-  using Situations = details::Situations;
-
  public:
-  using BaseGotoTableT = UmapT<TransitionKey, StateId, TransitionKeyHash>;
-  using StatesT = VectorT<Situations>;
-  using StateSetToIdT = UmapT<Situations, StateId, details::SituationsHash>;
+  using TransitionMap =
+      std::unordered_map<TransitionKey, StateId, TransitionKeyHash>;
 
-  /*================= Constructors/Destructors =================*/
-  CanonicalCollection() = delete;
+  [[nodiscard]] static CanonicalCollection Build(const PreparedGrammar& grammar,
+                                                 const FirstK& first);
 
-  CanonicalCollection(const CanonicalCollection&) = default;
+  const std::vector<Situations>& States() const { return states_; }
+  const TransitionMap& Transitions() const { return transitions_; }
 
-  CanonicalCollection(CanonicalCollection&&) = default;
+  TransitionMap TakeTransitions() && { return std::move(transitions_); }
 
-  CanonicalCollection(const PreparedGrammar& grammar, const FirstK& first_k);
-
-  ~CanonicalCollection() = default;
-
-  /*======================= Assignments ========================*/
-  CanonicalCollection& operator=(const CanonicalCollection& /*unused*/) =
-      default;
-
-  CanonicalCollection& operator=(CanonicalCollection&& /*unused*/) = default;
-
-  /*========================= Getters ==========================*/
-  [[nodiscard]] const BaseGotoTableT& get_goto_table() const noexcept;
-
-  BaseGotoTableT take_goto_table() noexcept;
-
-  [[nodiscard]] const StatesT& get_states() const noexcept;
-
-  [[nodiscard]] const StateSetToIdT& get_state_to_id_map() const noexcept;
-
-  /*========================== Impls ===========================*/
  private:
-  [[nodiscard]] static Situations create_initial_situations(CCC& ctx);
+  CanonicalCollection() = default;
 
-  [[nodiscard]] static Situations closure(CCC& ctx, Situations kernal_set);
-
-  [[nodiscard]] Situations compute_go_situation(CCC& ctx, StateId state_idx,
-                                                SymbolId sym) const;
-
-  void build_goto_table(CCC& ctx);
-
-  std::pair<StateId, bool> insert_sutiations(Situations state);
-
-  /*======================= Data fields ========================*/
-  StatesT states_;
-  StateSetToIdT state_set_to_id_;
-
-  BaseGotoTableT goto_table_;
+  std::vector<Situations> states_;
+  TransitionMap transitions_;
 };
+
 }  // namespace lrk_parser::details

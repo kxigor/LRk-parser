@@ -14,11 +14,15 @@ std::vector<SymbolId> EncodeSymbols(StringViewT symbols) {
 PreparedGrammar::PreparedGrammar(const Grammar& grammar) {
   for (CharT symbol : grammar.Terminals()) {
     const auto id = EncodeSymbol(symbol);
-    if (terminal_set_.insert(id).second) terminals_.push_back(id);
+    if (terminal_set_.insert(id).second) {
+      terminals_.push_back(id);
+    }
   }
   for (CharT symbol : grammar.Nonterminals()) {
     const auto id = EncodeSymbol(symbol);
-    if (nonterminal_set_.insert(id).second) nonterminals_.push_back(id);
+    if (nonterminal_set_.insert(id).second) {
+      nonterminals_.push_back(id);
+    }
   }
   nonterminals_.push_back(kAugmentedStart);
   nonterminal_set_.insert(kAugmentedStart);
@@ -34,7 +38,9 @@ PreparedGrammar::PreparedGrammar(const Grammar& grammar) {
 
 std::span<const RuleId> PreparedGrammar::RulesFor(SymbolId symbol) const {
   const auto it = rules_by_lhs_.find(symbol);
-  if (it == rules_by_lhs_.end()) return {};
+  if (it == rules_by_lhs_.end()) {
+    return {};
+  }
   return it->second;
 }
 

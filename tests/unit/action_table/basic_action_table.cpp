@@ -27,8 +27,8 @@ class ActionTableTest : public ::testing::Test {
     VectorT<StringT> rules = {"S->A", "A->a"};
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
     first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
-    canonical_collection_ =
-        std::make_unique<CanonicalCollection>(*grammar_, *first_k_);
+    canonical_collection_ = std::make_unique<CanonicalCollection>(
+        CanonicalCollection::Build(*grammar_, *first_k_));
   }
 
   void SetUpConflictGrammar() {
@@ -39,8 +39,8 @@ class ActionTableTest : public ::testing::Test {
     grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
     first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
 
-    canonical_collection_ =
-        std::make_unique<CanonicalCollection>(*grammar_, *first_k_);
+    canonical_collection_ = std::make_unique<CanonicalCollection>(
+        CanonicalCollection::Build(*grammar_, *first_k_));
   }
 };
 
@@ -49,7 +49,7 @@ TEST_F(ActionTableTest, BasicShiftReduceAccept) {
 
   ActionTable action_table(*grammar_, *first_k_, *canonical_collection_);
 
-  const auto& goto_table = canonical_collection_->get_goto_table();
+  const auto& goto_table = canonical_collection_->Transitions();
   StateId state_0{0};
 
   ActionKey shift_key{.state_id = state_0, .lookahead = "a"};
@@ -101,7 +101,7 @@ TEST_F(ActionTableTest, DetectsShiftReduceConflict) {
   const auto grammar =
       PreparedGrammar(ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value());
   const auto first_k = FirstK::Compute(grammar, 1);
-  const CanonicalCollection collection(grammar, first_k);
+  const auto collection = CanonicalCollection::Build(grammar, first_k);
 
   EXPECT_THROW((ActionTable{grammar, first_k, collection}), std::runtime_error);
 }

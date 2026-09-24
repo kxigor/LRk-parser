@@ -23,7 +23,7 @@ using Rule = lrk_parser::Rule;
 using StringT = lrk_parser::StringT;
 using Grammar = lrk_parser::Grammar;
 using StateId = lrk_parser::details::StateId;
-using BaseGotoTableT = lrk_parser::details::CanonicalCollection::BaseGotoTableT;
+using BaseGotoTableT = lrk_parser::details::CanonicalCollection::TransitionMap;
 
 /*TODO: доработать консольный вывыод, он кривой*/
 
@@ -192,8 +192,12 @@ struct std::formatter<lrk_parser::details::PreparedGrammar> {
     auto out = std::format_to(ctx.out(), "Prepared production rules:\n");
     for (const auto& rule : grammar.Rules()) {
       out = std::format_to(out, "  {} -> ", rule.lhs);
-      if (rule.rhs.empty()) out = std::format_to(out, "ε");
-      for (auto symbol : rule.rhs) out = std::format_to(out, "{}", symbol);
+      if (rule.rhs.empty()) {
+        out = std::format_to(out, "ε");
+      }
+      for (auto symbol : rule.rhs) {
+        out = std::format_to(out, "{}", symbol);
+      }
       out = std::format_to(out, "\n");
     }
     return out;
@@ -210,13 +214,13 @@ struct std::formatter<lrk_parser::details::Situation> {
                      std::format_context& ctx) {
     auto out = ctx.out();
 
-    out = std::format_to(out, "[Rule={}, Dot={}, Lookahead=\"", sit.rule_idx,
-                         sit.dot_pose);
+    out = std::format_to(out, "[Rule={}, Dot={}, Lookahead=\"", sit.rule,
+                         sit.dot);
 
-    if (sit.actpref.empty()) {
+    if (sit.lookahead.empty()) {
       out = std::format_to(out, "ε");
     } else {
-      out = std::format_to(out, "{}", sit.actpref);
+      out = std::format_to(out, "{}", sit.lookahead);
     }
 
     out = std::format_to(out, "\"]");
@@ -323,14 +327,14 @@ struct std::formatter<lrk_parser::details::CanonicalCollection> {
 
     out = std::format_to(out, "\n## States:\n");
 
-    const auto& states = cc.get_states();
+    const auto& states = cc.States();
     for (std::size_t i = 0; i < states.size(); ++i) {
       out = std::format_to(out, "  State {}:\n", i);
       out = std::format_to(out, "{}\n", states[i]);
     }
 
     out = std::format_to(out, "\n## Goto Table:\n");
-    out = std::format_to(out, "{}", cc.get_goto_table());
+    out = std::format_to(out, "{}", cc.Transitions());
 
     out = std::format_to(
         out,
@@ -469,7 +473,9 @@ struct std::formatter<lrk_parser::details::ActionTable> {
         }
 
         int total_padding = COLUMN_WIDTH - static_cast<int>(content_len);
-        if (total_padding < 0) total_padding = 0;
+        if (total_padding < 0) {
+          total_padding = 0;
+        }
 
         int left_pad = total_padding / 2;
         int right_pad = total_padding - left_pad;
@@ -514,7 +520,9 @@ struct std::formatter<lrk_parser::LrkParser> {
     out = std::format_to(out, "{:-^{}}\n", " LR(K) Parser Configuration ",
                          kLineWidth);
     out = std::format_to(out, "Parsing Lookahead (K) = {}\n\n", parser.k_);
-    if (parser.grammar_) out = std::format_to(out, "{}\n", *parser.grammar_);
+    if (parser.grammar_) {
+      out = std::format_to(out, "{}\n", *parser.grammar_);
+    }
     out = std::format_to(out, "{}\n", parser.goto_table_);
     out = std::format_to(out, "{}\n", parser.action_table_);
     out = std::format_to(out, "{:-<{}}\n", "", kLineWidth);

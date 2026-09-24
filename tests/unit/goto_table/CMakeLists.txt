@@ -5,6 +5,4 @@ add_gtest(basic_goto_table
     project_options
     project_sanitizers
     project_coverage
-  INCLUDE_DIRECTORIES
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/tests/unit>
 )

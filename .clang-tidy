@@ -25,7 +25,8 @@ Checks: >
   -performance-move-const-arg,
   -readability-identifier-length,
   -readability-identifier-naming,
-  -portability-avoid-pragma-once
+  -portability-avoid-pragma-once,
+  readability-braces-around-statements
 WarningsAsErrors: '*'
 
 CheckOptions:

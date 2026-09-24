@@ -14,7 +14,6 @@
 #include "tables_base.hpp"
 
 namespace lrk_parser {
-/*=========================== Fwds ===========================*/
 std::ostream& operator<<(std::ostream& os, const Rule& rule);
 std::ostream& operator<<(std::ostream& os, const Grammar& grammar);
 namespace details {

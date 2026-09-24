@@ -8,10 +8,8 @@
 
 namespace lrk_parser::details {
 class GotoTable {
-  /*====================== Usings/Helpers ======================*/
-  using BaseGotoTableT = CanonicalCollection::BaseGotoTableT;
+  using BaseGotoTableT = CanonicalCollection::TransitionMap;
 
-  /*================= Constructors/Destructors =================*/
  public:
   GotoTable() = default;
 
@@ -25,20 +23,16 @@ class GotoTable {
 
   ~GotoTable() = default;
 
-  /*======================= Assignments ========================*/
   GotoTable& operator=(const GotoTable& /*unused*/) = default;
 
   GotoTable& operator=(GotoTable&& /*unused*/) = default;
 
-  /*========================== Output ==========================*/
   friend struct std::formatter<GotoTable>;
 
-  /*===================== Table Operations =====================*/
   [[nodiscard]] bool has_goto_state(const TransitionKey& t_key) const;
 
   [[nodiscard]] const StateId& get_goto_state(const TransitionKey& t_key) const;
 
-  /*======================= Data Fields ========================*/
  private:
   BaseGotoTableT goto_table_;
 };

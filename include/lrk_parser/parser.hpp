@@ -30,7 +30,6 @@ class LrkParser {
     const StringT& word;  // NOLINT
   };
 
-  /*================= Consturctors/Destructors =================*/
  public:
   LrkParser() noexcept = default;
 
@@ -40,23 +39,19 @@ class LrkParser {
 
   ~LrkParser() noexcept = default;
 
-  /*======================= Assignments ========================*/
   LrkParser& operator=(const LrkParser& /*unused*/) = default;
 
   LrkParser& operator=(LrkParser&& /*unused*/) noexcept = default;
 
-  /*========================== Output ==========================*/
   friend struct std::formatter<LrkParser>;
 
   friend std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
 
-  /*===================== Parser Interface =====================*/
   void fit(const Grammar& grammar, std::size_t k);
 
   [[nodiscard]] bool predict(const StringT& word) const;
 
  private:
-  /*=========================== Imls ===========================*/
   void fit_impl(std::size_t k);
 
   OptionalT<details::Action> get_next_action(PredictContext& ctx) const;

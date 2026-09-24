@@ -13,7 +13,6 @@
 
 namespace lrk_parser::details {
 class ActionTable {
-  /*====================== Usings/Helpers ======================*/
   using BaseActionTableT = UmapT<ActionKey, Action, ActionKeyHash>;
 
   // NOLINTBEGIN
@@ -32,7 +31,6 @@ class ActionTable {
 
   using ATC = ActionTableContext;
 
-  /*================= Constructors/Destructors =================*/
  public:
   ActionTable() = default;
 
@@ -45,23 +43,19 @@ class ActionTable {
 
   ~ActionTable() = default;
 
-  /*======================= Assignments ========================*/
   ActionTable& operator=(const ActionTable& /*unused*/) = default;
 
   ActionTable& operator=(ActionTable&& /*unused*/) = default;
 
-  /*========================== Output ==========================*/
   friend struct std::formatter<ActionTable>;
 
   friend std::ostream& operator<<(std::ostream& os, const ActionTable& table);
 
-  /*===================== Table Operations =====================*/
   [[nodiscard]] bool has_parse_action(const ActionKey& a_key) const;
 
   [[nodiscard]] const details::Action& get_parse_action(
       const ActionKey& a_key) const;
 
-  /*========================== Impls ===========================*/
  private:
   void build_action_table(ATC& ctx);
 
@@ -77,7 +71,6 @@ class ActionTable {
   void add_action_checked(StateId state, const StringT& lookahead,
                           Action new_action);
 
-  /*======================= Data fields ========================*/
   BaseActionTableT action_table_;
 };
 }  // namespace lrk_parser::details

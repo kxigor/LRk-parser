@@ -184,6 +184,25 @@ TEST(RecognitionTest, UnitCycleReportsConflictAtFixedLookahead) {
   }
 }
 
+TEST(RecognitionTest, CanonicalLR1StatesWithTheSameCoreStaySeparate) {
+  const auto grammar = MakeGrammar({"abcde",
+                                    "SAB",
+                                    {{'S', "aAd"},
+                                     {'S', "bAe"},
+                                     {'S', "aBe"},
+                                     {'S', "bBd"},
+                                     {'A', "c"},
+                                     {'B', "c"}},
+                                    'S'})
+                           .value();
+  LrkParser parser;
+  ASSERT_NO_THROW(parser.fit(grammar, 1));
+
+  ExpectLanguage(parser, "abcde", 4, [](StringViewT word) {
+    return word == "acd" || word == "ace" || word == "bcd" || word == "bce";
+  });
+}
+
 TEST(RecognitionTest, AtSignIsAnOrdinaryTerminal) {
   const auto grammar = ParseGrammar("@", "S", {"S->@S", "S->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
@@ -245,7 +264,9 @@ TEST(RecognitionTest, NoByteNeedsToBeReservedForAugmentation) {
   for (unsigned int value = 0;
        value <= std::numeric_limits<unsigned char>::max(); ++value) {
     const auto symbol = static_cast<CharT>(value);
-    if (symbol == 'S') continue;
+    if (symbol == 'S') {
+      continue;
+    }
     spec.terminals.push_back(symbol);
     spec.rules.push_back({'S', StringT{symbol}});
   }
