@@ -13,11 +13,11 @@ lrk_parser::details::GotoTable lrk_parser::details::GotoTable::Build(
       ++it;
     }
   }
-  return GotoTable(std::move(transitions));
+  return GotoTable{std::move(transitions)};
 }
 
 lrk_parser::details::GotoTable::GotoTable(TransitionMap transitions)
-    : goto_table_(std::move(transitions)) {}
+    : goto_table_{std::move(transitions)} {}
 
 bool lrk_parser::details::GotoTable::HasGotoState(
     const TransitionKey& t_key) const {

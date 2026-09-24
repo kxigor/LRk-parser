@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -15,20 +14,20 @@
 namespace {
 
 using lrk_parser::CharT;
-using lrk_parser::LrkParser;
 using lrk_parser::MakeGrammar;
 using lrk_parser::ParseGrammar;
+using lrk_parser::Parser;
 using lrk_parser::StringT;
 using lrk_parser::StringViewT;
 
 template <typename Predicate>
-void ExpectLanguage(const LrkParser& parser, StringViewT alphabet,
+void ExpectLanguage(const Parser& parser, StringViewT alphabet,
                     std::size_t max_length, Predicate accepts) {
   std::vector<StringT> words{StringT{}};
   for (std::size_t length = 0; length <= max_length; ++length) {
     std::vector<StringT> next_words;
     for (const auto& word : words) {
-      EXPECT_EQ(parser.predict(word), accepts(word))
+      EXPECT_EQ(parser.Accepts(word), accepts(word))
           << "word: '" << word << "'";
       if (length < max_length) {
         for (CharT symbol : alphabet) {
@@ -58,9 +57,9 @@ TEST(RecognitionTest, EpsilonLanguage) {
   const auto grammar = ParseGrammar("a", "S", {"S->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "a", 4,
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "a", 4,
                    [](const StringT& word) { return word.empty(); });
   }
 }
@@ -69,9 +68,9 @@ TEST(RecognitionTest, EqualNumbersOfAsAndBs) {
   const auto grammar = ParseGrammar("ab", "S", {"S->aSb", "S->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "ab", 6, [](const StringT& word) {
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "ab", 6, [](const StringT& word) {
       const auto half = word.size() / 2;
       return word == StringT(half, 'a') + StringT(half, 'b');
     });
@@ -82,9 +81,9 @@ TEST(RecognitionTest, BalancedParentheses) {
   const auto grammar = ParseGrammar("()", "S", {"S->(S)S", "S->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "()", 6, IsBalanced);
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "()", 6, IsBalanced);
   }
 }
 
@@ -92,9 +91,9 @@ TEST(RecognitionTest, LeftAndRightRecursion) {
   for (const auto* rule : {"S->Sa", "S->aS"}) {
     SCOPED_TRACE(rule);
     const auto grammar = ParseGrammar("ab", "S", {rule, "S->"}, 'S').value();
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, 1));
-    ExpectLanguage(parser, "ab", 6, [](const StringT& word) {
+    auto parser = Parser::Compile(grammar, 1);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "ab", 6, [](const StringT& word) {
       return word.find('b') == StringT::npos;
     });
   }
@@ -109,9 +108,9 @@ TEST(RecognitionTest, NullableChain) {
                                       "ab", "ac", "bc", "abc"};
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "abc", 4, [&](const StringT& word) {
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "abc", 4, [&](const StringT& word) {
       return std::ranges::find(language, word) != language.end();
     });
   }
@@ -126,12 +125,12 @@ TEST(RecognitionTest, ExplicitLookaheadForLR2AndLR3Grammars) {
                       "A->a", "B->a"},
                      'S')
             .value();
-    LrkParser parser;
     for (std::size_t smaller_k = 1; smaller_k < k; ++smaller_k) {
-      EXPECT_THROW(parser.fit(grammar, smaller_k), std::runtime_error);
+      EXPECT_FALSE(Parser::Compile(grammar, smaller_k).has_value());
     }
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "ab", 5, [k](const StringT& word) {
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "ab", 5, [k](const StringT& word) {
       return word == StringT(k, 'a') || word == StringT(k + 1, 'a');
     });
   }
@@ -141,9 +140,9 @@ TEST(RecognitionTest, NonterminatingRecursionHasEmptyLanguage) {
   const auto grammar = ParseGrammar("a", "S", {"S->aS"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "a", 5, [](const StringT&) { return false; });
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "a", 5, [](const StringT&) { return false; });
   }
 }
 
@@ -152,9 +151,9 @@ TEST(RecognitionTest, ProductiveBranchBesideNonterminatingRecursion) {
       ParseGrammar("ab", "SB", {"S->a", "S->B", "B->bB"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "ab", 5,
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "ab", 5,
                    [](const StringT& word) { return word == "a"; });
   }
 }
@@ -167,9 +166,9 @@ TEST(RecognitionTest, UnreachableConflictsDoNotAffectStartLanguage) {
     const auto grammar = ParseGrammar("ab", "SAB", rules, 'S').value();
     for (std::size_t k : {1U, 2U, 3U}) {
       SCOPED_TRACE(k);
-      LrkParser parser;
-      ASSERT_NO_THROW(parser.fit(grammar, k));
-      ExpectLanguage(parser, "ab", 5,
+      auto parser = Parser::Compile(grammar, k);
+      ASSERT_TRUE(parser.has_value());
+      ExpectLanguage(*parser, "ab", 5,
                      [](const StringT& word) { return word == "a"; });
     }
   }
@@ -179,8 +178,7 @@ TEST(RecognitionTest, UnitCycleReportsConflictAtFixedLookahead) {
   const auto grammar = ParseGrammar("a", "S", {"S->S"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
     SCOPED_TRACE(k);
-    LrkParser parser;
-    EXPECT_THROW(parser.fit(grammar, k), std::runtime_error);
+    EXPECT_FALSE(Parser::Compile(grammar, k).has_value());
   }
 }
 
@@ -195,10 +193,10 @@ TEST(RecognitionTest, CanonicalLR1StatesWithTheSameCoreStaySeparate) {
                                      {'B', "c"}},
                                     'S'})
                            .value();
-  LrkParser parser;
-  ASSERT_NO_THROW(parser.fit(grammar, 1));
+  auto parser = Parser::Compile(grammar, 1);
+  ASSERT_TRUE(parser.has_value());
 
-  ExpectLanguage(parser, "abcde", 4, [](StringViewT word) {
+  ExpectLanguage(*parser, "abcde", 4, [](StringViewT word) {
     return word == "acd" || word == "ace" || word == "bcd" || word == "bce";
   });
 }
@@ -206,9 +204,9 @@ TEST(RecognitionTest, CanonicalLR1StatesWithTheSameCoreStaySeparate) {
 TEST(RecognitionTest, AtSignIsAnOrdinaryTerminal) {
   const auto grammar = ParseGrammar("@", "S", {"S->@S", "S->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "@a", 4, [](StringViewT word) {
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "@a", 4, [](StringViewT word) {
       return word.find_first_not_of('@') == StringViewT::npos;
     });
   }
@@ -218,9 +216,9 @@ TEST(RecognitionTest, AtSignNonterminalReducesBeforeAccept) {
   const auto grammar =
       ParseGrammar("ab", "S@", {"S->@b", "@->a@", "@->"}, 'S').value();
   for (std::size_t k : {1U, 2U, 3U}) {
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    ExpectLanguage(parser, "ab", 4, [](StringViewT word) {
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    ExpectLanguage(*parser, "ab", 4, [](StringViewT word) {
       return word.ends_with('b') &&
              word.find_first_not_of('a') == word.size() - 1;
     });
@@ -236,9 +234,9 @@ TEST(RecognitionTest, StartMayBeAtSignNullOrHighBitByte) {
                      start})
             .value();
     for (std::size_t k : {1U, 2U, 3U}) {
-      LrkParser parser;
-      ASSERT_NO_THROW(parser.fit(grammar, k));
-      ExpectLanguage(parser, "ab", 4, [](StringViewT word) {
+      auto parser = Parser::Compile(grammar, k);
+      ASSERT_TRUE(parser.has_value());
+      ExpectLanguage(*parser, "ab", 4, [](StringViewT word) {
         return word.find_first_not_of('a') == StringViewT::npos;
       });
     }
@@ -249,13 +247,13 @@ TEST(RecognitionTest, StructuredWhitespaceAndNullAreInputSymbols) {
   const StringT input{' ', '\t', '\0', static_cast<CharT>(0xFF)};
   const auto grammar = MakeGrammar({input, "S", {{'S', input}}, 'S'}).value();
   for (std::size_t k : {1U, 2U, 3U}) {
-    LrkParser parser;
-    ASSERT_NO_THROW(parser.fit(grammar, k));
-    EXPECT_TRUE(parser.predict(input));
-    EXPECT_FALSE(parser.predict(""));
-    EXPECT_FALSE(parser.predict(input.substr(0, 2)));
-    EXPECT_FALSE(parser.predict(input + '\0'));
-    EXPECT_FALSE(parser.predict(input.substr(1)));
+    auto parser = Parser::Compile(grammar, k);
+    ASSERT_TRUE(parser.has_value());
+    EXPECT_TRUE(parser->Accepts(input));
+    EXPECT_FALSE(parser->Accepts(""));
+    EXPECT_FALSE(parser->Accepts(input.substr(0, 2)));
+    EXPECT_FALSE(parser->Accepts(input + '\0'));
+    EXPECT_FALSE(parser->Accepts(input.substr(1)));
   }
 }
 
@@ -271,26 +269,25 @@ TEST(RecognitionTest, NoByteNeedsToBeReservedForAugmentation) {
     spec.rules.push_back({'S', StringT{symbol}});
   }
   const auto grammar = MakeGrammar(spec).value();
-  LrkParser parser;
-  ASSERT_NO_THROW(parser.fit(grammar, 1));
+  auto parser = Parser::Compile(grammar, 1);
+  ASSERT_TRUE(parser.has_value());
 
   for (CharT symbol : spec.terminals) {
-    EXPECT_TRUE(parser.predict(StringT{symbol}));
-    EXPECT_FALSE(parser.predict(StringT{symbol, symbol}));
+    EXPECT_TRUE(parser->Accepts(StringT{symbol}));
+    EXPECT_FALSE(parser->Accepts(StringT{symbol, symbol}));
   }
-  EXPECT_FALSE(parser.predict("S"));
-  EXPECT_FALSE(parser.predict(""));
+  EXPECT_FALSE(parser->Accepts("S"));
+  EXPECT_FALSE(parser->Accepts(""));
 }
 
 TEST(RecognitionTest, OwnsPreparedRulesAfterGrammarDestruction) {
   const auto parser = [] {
     const auto grammar = MakeGrammar({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'});
-    LrkParser result;
-    result.fit(grammar.value(), 2);
-    return result;
+    return Parser::Compile(grammar.value(), 2);
   }();
+  ASSERT_TRUE(parser.has_value());
 
-  ExpectLanguage(parser, "ab", 4, [](StringViewT word) {
+  ExpectLanguage(*parser, "ab", 4, [](StringViewT word) {
     return word.find_first_not_of('a') == StringViewT::npos;
   });
 }

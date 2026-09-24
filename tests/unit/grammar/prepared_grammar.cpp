@@ -13,7 +13,7 @@ namespace {
 TEST(PreparedGrammar, AugmentsWithoutChangingUserGrammar) {
   const auto grammar = MakeGrammar({"a", "@A", {{'@', "A"}, {'A', "a"}}, '@'});
   ASSERT_TRUE(grammar.has_value());
-  const PreparedGrammar prepared(*grammar);
+  const PreparedGrammar prepared{*grammar};
 
   ASSERT_EQ(grammar->Rules().size(), 2);
   EXPECT_EQ(grammar->Rules()[0], (Rule{'@', "A"}));
@@ -29,7 +29,7 @@ TEST(PreparedGrammar, IndexesDuplicateRulesSeparatelyInInputOrder) {
   const auto grammar = MakeGrammar(
       {"ab", "SAB", {{'S', "A"}, {'A', "a"}, {'S', "b"}, {'A', "a"}}, 'S'});
   ASSERT_TRUE(grammar.has_value());
-  const PreparedGrammar prepared(*grammar);
+  const PreparedGrammar prepared{*grammar};
 
   const std::vector<RuleId> s_rules{RuleId{1}, RuleId{3}};
   const std::vector<RuleId> a_rules{RuleId{2}, RuleId{4}};
@@ -46,7 +46,7 @@ TEST(PreparedGrammar, IndexesDuplicateRulesSeparatelyInInputOrder) {
 TEST(PreparedGrammar, OwnsRulesAfterSourceDestruction) {
   const auto prepared = [] {
     const auto grammar = MakeGrammar({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'});
-    return PreparedGrammar(grammar.value());
+    return PreparedGrammar{grammar.value()};
   }();
 
   ASSERT_EQ(prepared.Rules().size(), 3);
@@ -61,8 +61,8 @@ TEST(PreparedGrammar, ByteIdsDoNotDependOnAlphabetOrderOrDuplicates) {
   const auto second = MakeGrammar({"ab", "SA", {{'S', "bAa"}, {'A', ""}}, 'S'});
   ASSERT_TRUE(first.has_value());
   ASSERT_TRUE(second.has_value());
-  const PreparedGrammar a(*first);
-  const PreparedGrammar b(*second);
+  const PreparedGrammar a{*first};
+  const PreparedGrammar b{*second};
 
   EXPECT_EQ(a.Terminals().size(), 2);
   EXPECT_EQ(a.Nonterminals().size(), 3);

@@ -28,5 +28,5 @@ std::ostream& operator<<(std::ostream& os, const ActionKey& a_key);
 std::ostream& operator<<(std::ostream& os, const GotoTable& table);
 std::ostream& operator<<(std::ostream& os, const ActionTable& table);
 }  // namespace details
-std::ostream& operator<<(std::ostream& os, const LrkParser& parser);
+std::ostream& operator<<(std::ostream& os, const Parser& parser);
 }  // namespace lrk_parser

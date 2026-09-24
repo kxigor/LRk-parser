@@ -11,9 +11,12 @@ int main() {
     return 1;
   }
 
-  lrk_parser::LrkParser parser;
-  parser.fit(*grammar, 1);
+  auto parser = lrk_parser::Parser::Compile(*grammar, 1);
+  if (!parser) {
+    std::cerr << "Cannot compile grammar\n";
+    return 1;
+  }
 
-  std::cout << parser << '\n';
-  std::cout << std::boolalpha << parser.predict("aaabbb") << '\n';
+  std::cout << *parser << '\n';
+  std::cout << std::boolalpha << parser->Accepts("aaabbb") << '\n';
 }

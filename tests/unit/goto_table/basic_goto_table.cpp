@@ -21,7 +21,7 @@ class CanonicalCollectionBaseTest : public ::testing::Test {
     StringT N = "SA";
     CharT Start = 'S';
     VectorT<StringT> rules = {"S->A", "A->a"};
-    grammar_ = PreparedGrammar(ParseGrammar(T, N, rules, Start).value());
+    grammar_ = PreparedGrammar{ParseGrammar(T, N, rules, Start).value()};
     first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
   }
 

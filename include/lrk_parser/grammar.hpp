@@ -43,7 +43,7 @@ class Grammar {
  private:
   friend std::expected<Grammar, GrammarError> MakeGrammar(GrammarSpec spec);
 
-  explicit Grammar(GrammarSpec spec) : spec_(std::move(spec)) {}
+  explicit Grammar(GrammarSpec spec) : spec_{std::move(spec)} {}
 
   GrammarSpec spec_;
 };

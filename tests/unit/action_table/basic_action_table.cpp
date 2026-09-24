@@ -14,8 +14,8 @@ namespace lrk_parser::details {
 namespace {
 
 TEST(ActionTable, BuildsDistinctShiftReduceAndAcceptActions) {
-  const PreparedGrammar grammar(
-      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value());
+  const PreparedGrammar grammar{
+      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value()};
   const auto first = FirstK::Compute(grammar, 1);
   const auto collection = CanonicalCollection::Build(grammar, first);
   const auto result = ActionTable::Build(grammar, first, collection);
@@ -47,8 +47,8 @@ TEST(ActionTable, BuildsDistinctShiftReduceAndAcceptActions) {
 
 TEST(ActionTable, ReportsOwningReduceReduceConflict) {
   const auto result = [] {
-    const PreparedGrammar grammar(
-        ParseGrammar("a", "S", {"S->a", "S->a"}, 'S').value());
+    const PreparedGrammar grammar{
+        ParseGrammar("a", "S", {"S->a", "S->a"}, 'S').value()};
     const auto first = FirstK::Compute(grammar, 2);
     const auto collection = CanonicalCollection::Build(grammar, first);
     const auto after_a =
@@ -80,8 +80,8 @@ TEST(ActionTable, ReportsOwningReduceReduceConflict) {
 }
 
 TEST(ActionTable, ReportsShiftReduceConflictWithRuleSources) {
-  const PreparedGrammar grammar(
-      ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value());
+  const PreparedGrammar grammar{
+      ParseGrammar("a", "S", {"S->SS", "S->a"}, 'S').value()};
   const auto first = FirstK::Compute(grammar, 1);
   const auto collection = CanonicalCollection::Build(grammar, first);
   const auto result = ActionTable::Build(grammar, first, collection);
@@ -106,7 +106,7 @@ TEST(ActionTable, ReportsShiftReduceConflictWithRuleSources) {
 }
 
 TEST(ActionTable, ReportsAcceptReduceConflict) {
-  const PreparedGrammar grammar(ParseGrammar("a", "S", {"S->S"}, 'S').value());
+  const PreparedGrammar grammar{ParseGrammar("a", "S", {"S->S"}, 'S').value()};
   const auto first = FirstK::Compute(grammar, 1);
   const auto collection = CanonicalCollection::Build(grammar, first);
   const auto result = ActionTable::Build(grammar, first, collection);
@@ -124,8 +124,8 @@ TEST(ActionTable, ReportsAcceptReduceConflict) {
 }
 
 TEST(ActionTable, CanCopyAndMoveBuiltTable) {
-  const PreparedGrammar grammar(
-      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value());
+  const PreparedGrammar grammar{
+      ParseGrammar("a", "SA", {"S->A", "A->a"}, 'S').value()};
   const auto first = FirstK::Compute(grammar, 1);
   const auto collection = CanonicalCollection::Build(grammar, first);
   auto built = ActionTable::Build(grammar, first, collection);

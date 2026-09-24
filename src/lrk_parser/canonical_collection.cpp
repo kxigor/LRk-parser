@@ -38,9 +38,9 @@ struct SituationsHash {
 
 Situations Closure(const PreparedGrammar& grammar, const FirstK& first,
                    Situations kernel) {
-  std::unordered_set<Situation, SituationHash> visited(kernel.begin(),
-                                                       kernel.end());
-  std::deque<Situation> pending(visited.begin(), visited.end());
+  std::unordered_set<Situation, SituationHash> visited{kernel.begin(),
+                                                       kernel.end()};
+  std::deque<Situation> pending{visited.begin(), visited.end()};
   while (!pending.empty()) {
     const auto situation = std::move(pending.front());
     pending.pop_front();
@@ -64,7 +64,7 @@ Situations Closure(const PreparedGrammar& grammar, const FirstK& first,
       }
     }
   }
-  Situations result(visited.begin(), visited.end());
+  Situations result{visited.begin(), visited.end()};
   std::ranges::sort(result, SituationLess);
   return result;
 }

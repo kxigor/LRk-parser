@@ -86,13 +86,15 @@ build/dev-debug-coverage/coverage_report/index.html
 
 ## Использование Библиотеки
 
-Основной класс для взаимодействия — `lrk_parser::LrkParser`, определенный в `include/lrk_parser/parser.hpp`.
+Основной класс для взаимодействия — `lrk_parser::Parser`, определённый в `include/lrk_parser/parser.hpp`.
 
 ### Основной Интерфейс
 
 ```cpp
-void fit(const Grammar& grammar, std::size_t k);
-[[nodiscard]] bool predict(const StringT& word) const;
+static std::expected<Parser, CompileError> Compile(const Grammar& grammar,
+                                                   std::size_t k);
+bool Accepts(StringViewT word) const;
+std::size_t Lookahead() const;
 ```
 
 Значение `k` задаёт вызывающий код; при необходимости он сам организует перебор.
@@ -108,9 +110,9 @@ int main() {
       "ab", "S", {"S->aSb", "S->"}, 'S');
   if (!grammar) return 1;
 
-  lrk_parser::LrkParser parser;
-  parser.fit(*grammar, 1);
-  return parser.predict("aabb") ? 0 : 1;
+  auto parser = lrk_parser::Parser::Compile(*grammar, 1);
+  if (!parser) return 1;
+  return parser->Accepts("aabb") ? 0 : 1;
 }
 ```
 
@@ -126,6 +128,8 @@ auto grammar = lrk_parser::MakeGrammar({
 ```
 
 Обе фабрики возвращают `std::expected`. `GrammarError` содержит причину, символ и, если ошибка относится к правилу, его индекс с нуля. У `ParseGrammar` ошибка — `std::variant<RuleSyntaxError, GrammarError>`; синтаксическая ошибка указывает индекс строки с неверной записью `S->rhs`.
+
+`Parser::Compile` создаёт готовый парсер или возвращает `CompileError`: недопустимый `k=0` либо конфликт действий. Готовый парсер владеет данными для распознавания и не зависит от времени жизни `Grammar`.
 
 `Grammar` владеет данными и предоставляет доступ только для чтения. Проверяются алфавиты, стартовый символ и правила, включая наличие продукций у используемых нетерминалов. Порядок и дубликаты правил сохраняются. Служебное стартовое правило добавляется только во внутреннее представление парсера.
 

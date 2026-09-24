@@ -55,20 +55,20 @@ std::expected<ActionTable, ActionConflict> ActionTable::Build(
              first.ForSequence(tail, situation.lookahead)) {
           if (auto conflict =
                   insert(state, lookahead, Action{Shift{target}}, situation)) {
-            return std::unexpected(std::move(*conflict));
+            return std::unexpected{std::move(*conflict)};
           }
         }
       } else if (situation.rule == kStartRule) {
         if (situation.lookahead.empty()) {
           if (auto conflict = insert(state, situation.lookahead,
                                      Action{Accept{}}, situation)) {
-            return std::unexpected(std::move(*conflict));
+            return std::unexpected{std::move(*conflict)};
           }
         }
       } else {
         if (auto conflict = insert(state, situation.lookahead,
                                    Action{Reduce{situation.rule}}, situation)) {
-          return std::unexpected(std::move(*conflict));
+          return std::unexpected{std::move(*conflict)};
         }
       }
     }

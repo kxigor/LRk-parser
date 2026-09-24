@@ -482,12 +482,12 @@ struct std::formatter<lrk_parser::details::GotoTable> {
 };
 
 template <>
-struct std::formatter<lrk_parser::LrkParser> {
+struct std::formatter<lrk_parser::Parser> {
   static constexpr auto parse(std::format_parse_context& ctx) {
     return std::ranges::find(ctx.begin(), ctx.end(), '}');
   }
 
-  static auto format(const lrk_parser::LrkParser& parser,
+  static auto format(const lrk_parser::Parser& parser,
                      std::format_context& ctx) {
     static const auto kLineWidth = 64;
     auto out = ctx.out();
@@ -495,9 +495,7 @@ struct std::formatter<lrk_parser::LrkParser> {
     out = std::format_to(out, "{:-^{}}\n", " LR(K) Parser Configuration ",
                          kLineWidth);
     out = std::format_to(out, "Parsing Lookahead (K) = {}\n\n", parser.k_);
-    if (parser.grammar_) {
-      out = std::format_to(out, "{}\n", *parser.grammar_);
-    }
+    out = std::format_to(out, "{}\n", parser.grammar_);
     out = std::format_to(out, "{}\n", parser.goto_table_);
     out = std::format_to(out, "{}\n", parser.action_table_);
     out = std::format_to(out, "{:-<{}}\n", "", kLineWidth);
@@ -558,7 +556,7 @@ std::ostream& operator<<(std::ostream& os, const TransitionKey& tkey) {
 }
 }  // namespace details
 
-std::ostream& operator<<(std::ostream& os, const LrkParser& parser) {
+std::ostream& operator<<(std::ostream& os, const Parser& parser) {
   return os << std::format("{}", parser);
 }
 

@@ -24,7 +24,7 @@ class FirstK {
                         StringViewT lookahead = {}) const;
 
  private:
-  explicit FirstK(std::size_t k) : lookahead_(k) {}
+  explicit FirstK(std::size_t k) : lookahead_{k} {}
 
   std::size_t lookahead_;
   std::unordered_map<SymbolId, PrefixSet> sets_;

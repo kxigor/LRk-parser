@@ -48,9 +48,9 @@ struct Accept {
 };
 
 struct Action {
-  Action(Shift shift) : value(shift) {}
-  Action(Reduce reduce) : value(reduce) {}
-  Action(Accept accept) : value(accept) {}
+  Action(Shift shift) : value{shift} {}
+  Action(Reduce reduce) : value{reduce} {}
+  Action(Accept accept) : value{accept} {}
 
   bool operator==(const Action&) const = default;
 

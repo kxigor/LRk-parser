@@ -1,122 +1,77 @@
 #include <gtest/gtest.h>
 
-#include <stdexcept>
-#include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 #include "lrk_parser/parser.hpp"
 #include "lrk_parser/text_grammar.hpp"
 
-using namespace lrk_parser;
-using namespace lrk_parser::details;
+namespace lrk_parser {
+namespace {
 
-class LrkParserTest : public ::testing::Test {
- protected:
-  LrkParser parser_;
+static_assert(!std::is_default_constructible_v<Parser>);
 
-  void InitParser(const StringT& terminals, const StringT& non_terminals,
-                  const VectorT<StringT>& rules, CharT start_symbol,
-                  std::size_t k) {
-    Grammar grammar =
-        ParseGrammar(terminals, non_terminals, rules, start_symbol).value();
-    parser_.fit(std::move(grammar), k);
+TEST(Parser, CompilesReadyLR1Parser) {
+  const auto grammar =
+      ParseGrammar("id=", "E", {"E->id=E", "E->id"}, 'E').value();
+  const auto parser = Parser::Compile(grammar, 1);
+  ASSERT_TRUE(parser.has_value());
+  EXPECT_EQ(parser->Lookahead(), 1);
+  EXPECT_TRUE(parser->Accepts("id=id"));
+  EXPECT_TRUE(parser->Accepts("id"));
+  EXPECT_FALSE(parser->Accepts("id="));
+  EXPECT_FALSE(parser->Accepts("id=id="));
+}
+
+TEST(Parser, RejectsZeroLookahead) {
+  const auto grammar = ParseGrammar("a", "S", {"S->a"}, 'S').value();
+  const auto result = Parser::Compile(grammar, 0);
+  ASSERT_FALSE(result.has_value());
+  ASSERT_TRUE(std::holds_alternative<InvalidLookahead>(result.error()));
+  EXPECT_EQ(std::get<InvalidLookahead>(result.error()).k, 0);
+}
+
+TEST(Parser, ReportsConflictUntilLookaheadIsSufficient) {
+  for (std::size_t required : {2U, 3U}) {
+    const auto grammar =
+        ParseGrammar("a", "SAB",
+                     {"S->A" + StringT(required, 'a'),
+                      "S->B" + StringT(required - 1, 'a'), "A->a", "B->a"},
+                     'S')
+            .value();
+    for (std::size_t smaller = 1; smaller < required; ++smaller) {
+      const auto result = Parser::Compile(grammar, smaller);
+      ASSERT_FALSE(result.has_value());
+      ASSERT_TRUE(
+          std::holds_alternative<details::ActionConflict>(result.error()));
+      EXPECT_EQ(std::get<details::ActionConflict>(result.error()).k, smaller);
+    }
+    const auto parser = Parser::Compile(grammar, required);
+    ASSERT_TRUE(parser.has_value());
+    EXPECT_EQ(parser->Lookahead(), required);
+    EXPECT_TRUE(parser->Accepts(StringT(required, 'a')));
+    EXPECT_TRUE(parser->Accepts(StringT(required + 1, 'a')));
+    EXPECT_FALSE(parser->Accepts(StringT(required - 1, 'a')));
   }
-};
-
-TEST_F(LrkParserTest, BasicLR1SuccessAndFailure) {
-  StringT T = "id=";
-  StringT N = "E";
-  CharT Start = 'E';
-  VectorT<StringT> rules = {"E->id=E", "E->id"};
-
-  ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 1); });
-
-  EXPECT_TRUE(parser_.predict("id=id")) << "Failed to parse 'id=id'";
-
-  EXPECT_TRUE(parser_.predict("id")) << "Failed to parse 'id'";
-
-  EXPECT_FALSE(parser_.predict("id=")) << "Incorrectly parsed 'id='";
-
-  EXPECT_FALSE(parser_.predict("id=id=")) << "Incorrectly parsed 'id=id='";
 }
 
-TEST_F(LrkParserTest, NestedStructureGrammar) {
-  StringT T = "ab";
-  StringT N = "S";
-  CharT Start = 'S';
-  VectorT<StringT> rules = {"S->aSbS", "S->"};
+TEST(Parser, OwnsCompiledDataAndSupportsCopyAndMove) {
+  auto compiled = [] {
+    const auto grammar = ParseGrammar("a", "S", {"S->aS", "S->"}, 'S').value();
+    return Parser::Compile(grammar, 2);
+  }();
+  ASSERT_TRUE(compiled.has_value());
 
-  ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 1); });
-
-  EXPECT_TRUE(parser_.predict("aababb")) << "Failed to parse 'aababb'";
-
-  EXPECT_FALSE(parser_.predict("aabbba")) << "Incorrectly parsed 'aabbba'";
-
-  EXPECT_TRUE(parser_.predict("ab")) << "Failed to parse 'ab'";
-
-  EXPECT_TRUE(parser_.predict("")) << "Failed to parse empty string (ε)";
+  const Parser copy = *compiled;
+  const Parser moved = std::move(*compiled);
+  for (const auto* parser : {&copy, &moved}) {
+    EXPECT_EQ(parser->Lookahead(), 2);
+    EXPECT_TRUE(parser->Accepts(""));
+    EXPECT_TRUE(parser->Accepts("aaa"));
+    EXPECT_FALSE(parser->Accepts("aaab"));
+  }
 }
 
-TEST_F(LrkParserTest, LR2Necessity) {
-  StringT T = "a";
-  StringT N = "SAB";
-  CharT Start = 'S';
-  VectorT<StringT> rules = {"S->Aaa", "S->Ba", "A->a", "B->a"};
-
-  EXPECT_THROW(
-      { InitParser(T, N, rules, Start, 1); }, std::runtime_error)
-      << "ActionTable was built successfully with k=1, expected R/R conflict "
-         "to fail compilation.";
-
-  ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 2); })
-      << "ActionTable failed to build even with k=2.";
-
-  EXPECT_TRUE(parser_.predict("aaa")) << "Failed to parse 'aaa' with k=2";
-
-  EXPECT_TRUE(parser_.predict("aa")) << "Failed to parse 'aa' with k=2";
-
-  EXPECT_FALSE(parser_.predict("a")) << "Incorrectly parsed 'a' with k=2";
-}
-
-TEST_F(LrkParserTest, WorksWithK3) {
-  StringT T = "a";
-  StringT N = "SAB";
-  CharT Start = 'S';
-  VectorT<StringT> rules = {"S->Aaaa", "S->Baa", "A->a", "B->a"};
-
-  ASSERT_THROW(
-      { InitParser(T, N, rules, Start, 1); }, std::runtime_error)
-      << "ActionTable was built successfully with k=1, expected R/R conflict "
-         "to fail compilation.";
-
-  ASSERT_THROW(
-      { InitParser(T, N, rules, Start, 2); }, std::runtime_error)
-      << "ActionTable was built successfully with k=2, expected R/R conflict "
-         "to fail compilation.";
-
-  ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 3); })
-      << "ActionTable failed to build with k=3.";
-
-  EXPECT_TRUE(parser_.predict("aaaa")) << "Failed to parse 'aaaa' with k=3";
-
-  EXPECT_TRUE(parser_.predict("aaa")) << "Failed to parse 'aaa' with k=3";
-
-  EXPECT_FALSE(parser_.predict("aa")) << "Incorrectly parsed 'aa' with k=3";
-}
-
-TEST_F(LrkParserTest, TrivialLR0Success) {
-  StringT T = "ab";
-  StringT N = "E";
-  CharT Start = 'E';
-  VectorT<StringT> rules = {"E->a"};
-
-  ASSERT_NO_THROW({ InitParser(T, N, rules, Start, 0); })
-      << "ActionTable failed to build for a Trivial LR(0) grammar with k=0.";
-
-  EXPECT_TRUE(parser_.predict("a")) << "Failed to parse 'a' with k=0";
-
-  EXPECT_FALSE(parser_.predict(""))
-      << "Incorrectly parsed empty string with k=0";
-
-  EXPECT_FALSE(parser_.predict("aa")) << "Incorrectly parsed 'aa' with k=0";
-  EXPECT_FALSE(parser_.predict("b")) << "Incorrectly parsed 'b' with k=0";
-}
+}  // namespace
+}  // namespace lrk_parser

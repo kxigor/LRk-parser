@@ -16,13 +16,13 @@ std::expected<Grammar, TextGrammarError> ParseGrammar(
       return StringViewT{" \t\n\r\f\v"}.contains(symbol);
     });
     if (text.size() < 3 || text.substr(1, 2) != "->") {
-      return std::unexpected(RuleSyntaxError{index});
+      return std::unexpected{RuleSyntaxError{index}};
     }
     spec.rules.push_back({text[0], text.substr(3)});
   }
   auto grammar = MakeGrammar(std::move(spec));
   if (!grammar) {
-    return std::unexpected(grammar.error());
+    return std::unexpected{grammar.error()};
   }
   return std::move(*grammar);
 }

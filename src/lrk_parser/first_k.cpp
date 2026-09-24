@@ -33,7 +33,7 @@ PrefixSet FirstK::ForSequence(std::span<const SymbolId> symbols,
 }
 
 FirstK FirstK::Compute(const PreparedGrammar& grammar, std::size_t k) {
-  FirstK result(k);
+  FirstK result{k};
   for (auto terminal : grammar.Terminals()) {
     result.sets_[terminal] = {StringT{DecodeSymbol(terminal)}};
   }

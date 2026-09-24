@@ -21,7 +21,7 @@ bool SituationLess(const Situation& lhs, const Situation& rhs) {
 }
 
 CanonicalCollection Build(GrammarSpec spec, std::size_t k = 1) {
-  const PreparedGrammar grammar(MakeGrammar(std::move(spec)).value());
+  const PreparedGrammar grammar{MakeGrammar(std::move(spec)).value()};
   const auto first = FirstK::Compute(grammar, k);
   return CanonicalCollection::Build(grammar, first);
 }
