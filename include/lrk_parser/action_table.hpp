@@ -2,8 +2,7 @@
 
 #include <cstddef>
 #include <expected>
-#include <format>
-#include <ostream>
+#include <iosfwd>
 
 #include "canonical_collection.hpp"
 #include "details/prepared_grammar.hpp"
@@ -35,7 +34,6 @@ class ActionTable {
       const PreparedGrammar& grammar, const FirstK& first,
       const CanonicalCollection& collection);
 
-  friend struct std::formatter<ActionTable>;
   friend std::ostream& operator<<(std::ostream& os, const ActionTable& table);
 
   [[nodiscard]] bool HasParseAction(const ActionKey& key) const;

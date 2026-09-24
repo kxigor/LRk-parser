@@ -2,8 +2,7 @@
 
 #include <cstddef>
 #include <expected>
-#include <format>
-#include <ostream>
+#include <iosfwd>
 #include <variant>
 #include <vector>
 
@@ -26,7 +25,6 @@ class Parser {
   [[nodiscard]] static std::expected<Parser, CompileError> Compile(
       const Grammar& grammar, std::size_t k);
 
-  friend struct std::formatter<Parser>;
   friend std::ostream& operator<<(std::ostream& os, const Parser& parser);
 
   [[nodiscard]] bool Accepts(StringViewT word) const;

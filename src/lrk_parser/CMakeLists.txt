@@ -6,7 +6,11 @@ add_library(lrk_parser
   canonical_collection.cpp
   goto_table.cpp
   action_table.cpp
-  output_helpers.cpp
+  output/grammar.cpp
+  output/automaton.cpp
+  output/tables.cpp
+  output/parser.cpp
+  output/errors.cpp
   parser.cpp
 )
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <format>
+#include <iosfwd>
 
 #include "details/prepared_grammar.hpp"
 #include "tables_base.hpp"
@@ -13,7 +13,7 @@ class GotoTable {
   [[nodiscard]] static GotoTable Build(const PreparedGrammar& grammar,
                                        TransitionMap transitions);
 
-  friend struct std::formatter<GotoTable>;
+  friend std::ostream& operator<<(std::ostream& os, const GotoTable& table);
 
   [[nodiscard]] bool HasGotoState(const TransitionKey& t_key) const;
 
