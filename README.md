@@ -82,6 +82,15 @@ build/dev-debug-coverage/coverage_report/index.html
 
 Основной интерфейс — `lrk_parser::Parser` из `lrk_parser/parser.hpp`. Построение грамматики объявлено в `lrk_parser/grammar.hpp`, текстовый адаптер — в `lrk_parser/text_grammar.hpp`.
 
+Для подключения из другого CMake-проекта:
+
+```cmake
+add_subdirectory(external/LRk-parser)
+target_link_libraries(my_app PRIVATE lrk_parser::lrk_parser)
+```
+
+Цель CMake передаёт потребителю требование C++23. При подключении через `add_subdirectory` приложение и тесты библиотеки не собираются. При самостоятельной сборке ими управляют независимые опции `LRK_PARSER_BUILD_APP` и `ENABLE_TESTING`.
+
 ### Основной Интерфейс
 
 ```cpp

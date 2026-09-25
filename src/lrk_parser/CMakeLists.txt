@@ -1,4 +1,4 @@
-add_library(lrk_parser 
+add_library(lrk_parser
   grammar.cpp
   text_grammar.cpp
   prepared_grammar.cpp
@@ -14,12 +14,19 @@ add_library(lrk_parser
   parser.cpp
 )
 
-target_link_libraries(lrk_parser
-  PRIVATE
-    project_options
-    project_sanitizers
-    project_coverage
-)
+add_library(lrk_parser::lrk_parser ALIAS lrk_parser)
+
+target_compile_features(lrk_parser PUBLIC cxx_std_23)
+set_target_properties(lrk_parser PROPERTIES CXX_EXTENSIONS OFF)
+
+if(PROJECT_IS_TOP_LEVEL)
+  target_link_libraries(lrk_parser
+    PRIVATE
+      project_options
+      project_sanitizers
+      project_coverage
+  )
+endif()
 
 target_include_directories(lrk_parser
   PUBLIC

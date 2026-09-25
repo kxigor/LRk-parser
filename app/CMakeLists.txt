@@ -5,5 +5,5 @@ target_link_libraries(lrk_parser_app
     project_options
     project_sanitizers
     project_coverage
-    lrk_parser
+    lrk_parser::lrk_parser
 )

@@ -1,15 +1,8 @@
 if(ENABLE_UNITTESTS)
   include(GtestTools)
   if(GTest_FOUND)
-    message(STATUS "Unit tests enabled. Found GTest module")
-  else()
-    message(WARNING "GTest requested (ENABLE_TESTING=ON) but GTest was NOT found. Check will be disabled.")
-    set(ENABLE_TIDY_CHECK OFF CACHE INTERNAL "")
+    add_subdirectory(unit)
   endif()
-endif()
-
-if(ENABLE_UNITTESTS)
-  add_subdirectory(unit)
 endif()
 
 if(ENABLE_FORMAT_CHECK)
