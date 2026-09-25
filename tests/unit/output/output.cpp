@@ -114,7 +114,7 @@ TEST(Output, FormatAndStreamProduceTheSameText) {
   const CompileError error{InvalidLookahead{0}};
   EXPECT_EQ(std::format("{}", error), Render(error));
   const std::unordered_set<StringT> words{"b", "a"};
-  EXPECT_EQ(std::format("{}", words), Render(words));
+  EXPECT_EQ(std::format("{}", output::AsFormatted(words)), Render(words));
 
   std::string written;
   std::format_to(std::back_inserter(written), "{}", grammar);

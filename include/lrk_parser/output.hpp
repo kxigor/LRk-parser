@@ -49,6 +49,16 @@ std::ostream& operator<<(std::ostream& os, const Parser& parser);
 namespace lrk_parser::output {
 
 template <typename T>
+struct FormattedView {
+  const T& value;
+};
+
+template <typename T>
+FormattedView<T> AsFormatted(const T& value) {
+  return {value};
+}
+
+template <typename T>
 struct OstreamFormatter {
   constexpr auto parse(std::format_parse_context& context) {
     return context.begin();
@@ -64,6 +74,15 @@ struct OstreamFormatter {
 };
 
 }  // namespace lrk_parser::output
+
+template <typename T>
+struct std::formatter<lrk_parser::output::FormattedView<T>>
+    : lrk_parser::output::OstreamFormatter<T> {
+  auto format(const lrk_parser::output::FormattedView<T>& view,
+              std::format_context& context) const {
+    return lrk_parser::output::OstreamFormatter<T>::format(view.value, context);
+  }
+};
 
 template <>
 struct std::formatter<lrk_parser::details::StateId>
@@ -136,10 +155,6 @@ struct std::formatter<lrk_parser::details::Situation>
 template <>
 struct std::formatter<lrk_parser::details::Situations>
     : lrk_parser::output::OstreamFormatter<lrk_parser::details::Situations> {};
-
-template <>
-struct std::formatter<lrk_parser::details::PrefixSet>
-    : lrk_parser::output::OstreamFormatter<lrk_parser::details::PrefixSet> {};
 
 template <>
 struct std::formatter<lrk_parser::details::FirstK>

@@ -25,6 +25,9 @@ add_library(project_sanitizers INTERFACE)
 # Note: Only one sanitizer can be active at a time (e.g., ASAN and TSAN are mutually exclusive).
 set(SANITIZER_MODE "Address" CACHE STRING "Sanitizer mode: None, Address, Thread, Memory, Undefined")
 set_property(CACHE SANITIZER_MODE PROPERTY STRINGS "None" "Address" "Thread" "Memory" "Undefined")
+if(SANITIZER_MODE STREQUAL "Memory" AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  message(FATAL_ERROR "MemorySanitizer requires Clang.")
+endif()
 
 # ========================================
 # 3. SANITIZER PRESETS (FLAGS)
@@ -78,10 +81,10 @@ if(NOT SANITIZER_MODE STREQUAL "None")
     $<$<AND:$<STREQUAL:${SANITIZER_MODE},Thread>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>:${TSAN_FLAGS}>
 
     # --- MSAN (Memory Sanitizer) ---
-    $<$<AND:$<STREQUAL:${SANITIZER_MODE},Memory>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>:${MSAN_FLAGS}>
+    $<$<AND:$<STREQUAL:${SANITIZER_MODE},Memory>,$<COMPILE_LANG_AND_ID:CXX,Clang>>:${MSAN_FLAGS}>
 
     # --- UBSAN (Undefined Behavior Sanitizer) ---
-    $<$<AND:$<STREQUAL:${SANITITIZER_MODE},Undefined>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>:${UBSAN_FLAGS}>
+    $<$<AND:$<STREQUAL:${SANITIZER_MODE},Undefined>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>:${UBSAN_FLAGS}>
   )
 
   # Apply selected flags to the interface target (compilation and linking)

@@ -43,6 +43,11 @@ set(GCC_AGGRESSIVE_COMPILE
   -Wopenmp-simd       -Wpointer-arith      -Winit-self      -Wredundant-decls 
 )
 
+set(CLANG_AGGRESSIVE_COMPILE
+  -Werror -Wconversion -Wsign-conversion -Wcast-qual -Wswitch-enum
+  -Wformat=2 -Wundef
+)
+
 set(GCC_DEBUG_COMPILE -g -D_DEBUG -ggdb3 -O0)  # Debugging and no optimization
 set(GCC_RELWITHDEB -O2 -g -DNDEBUG)            # Moderate optimization + Debug info
 set(GCC_RELEASE -O3 -DNDEBUG)                  # Full optimization
@@ -86,7 +91,8 @@ target_compile_options(project_options INTERFACE
 
   # --- Debug Configuration ---
   # Note: Aggressive warnings are included here to maximize code quality during development.
-  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>>: ${GCC_DEBUG_COMPILE} ${GCC_AGGRESSIVE_COMPILE}>
+  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU>>: ${GCC_DEBUG_COMPILE} ${GCC_AGGRESSIVE_COMPILE}>
+  $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,Clang>>: ${GCC_DEBUG_COMPILE} ${CLANG_AGGRESSIVE_COMPILE}>
   $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>: ${MSVC_DEBUG_COMPILE}>
 
   # --- RelWithDebInfo Configuration ---

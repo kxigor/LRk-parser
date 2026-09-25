@@ -29,9 +29,11 @@
     {
       "name": "mixin-san-memory",
       "hidden": true,
-      "toolchainFile": "", 
-      "description": "Requires libc++ build usually",
-      "cacheVariables": { "SANITIZER_MODE": "Memory" }
+      "description": "Requires an instrumented C++ standard library",
+      "cacheVariables": {
+        "SANITIZER_MODE": "Memory",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     },
     {
       "name": "mixin-san-undefined",
@@ -128,6 +130,11 @@
     {
       "name": "dev-debug-tsan",
       "configurePreset": "dev-debug-tsan",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "dev-debug-ubsan",
+      "configurePreset": "dev-debug-ubsan",
       "output": { "outputOnFailure": true }
     },
     {
