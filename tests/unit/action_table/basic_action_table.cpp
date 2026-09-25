@@ -6,8 +6,8 @@
 #include <variant>
 #include <vector>
 
-#include "lrk_parser/action_table.hpp"
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/details/action_table.hpp"
+#include "lrk_parser/output.hpp"
 #include "lrk_parser/text_grammar.hpp"
 
 namespace lrk_parser::details {
@@ -27,20 +27,23 @@ TEST(ActionTable, BuildsDistinctShiftReduceAndAcceptActions) {
   const auto after_s =
       collection.Transitions().at({initial, EncodeSymbol('S')});
 
-  const auto& shift = result->GetParseAction({initial, "a"});
-  ASSERT_TRUE(std::holds_alternative<Shift>(shift.value));
-  EXPECT_EQ(std::get<Shift>(shift.value).next_state, after_a);
+  const auto* shift = result->FindAction({initial, "a"});
+  ASSERT_NE(shift, nullptr);
+  ASSERT_TRUE(std::holds_alternative<Shift>(shift->value));
+  EXPECT_EQ(std::get<Shift>(shift->value).next_state, after_a);
 
-  const auto& reduce = result->GetParseAction({after_a, ""});
-  ASSERT_TRUE(std::holds_alternative<Reduce>(reduce.value));
-  EXPECT_EQ(std::get<Reduce>(reduce.value).rule, RuleId{2});
+  const auto* reduce = result->FindAction({after_a, ""});
+  ASSERT_NE(reduce, nullptr);
+  ASSERT_TRUE(std::holds_alternative<Reduce>(reduce->value));
+  EXPECT_EQ(std::get<Reduce>(reduce->value).rule, RuleId{2});
 
-  const auto& accept = result->GetParseAction({after_s, ""});
-  EXPECT_TRUE(std::holds_alternative<Accept>(accept.value));
-  EXPECT_FALSE(result->HasParseAction({initial, ""}));
+  const auto* accept = result->FindAction({after_s, ""});
+  ASSERT_NE(accept, nullptr);
+  EXPECT_TRUE(std::holds_alternative<Accept>(accept->value));
+  EXPECT_EQ(result->FindAction({initial, ""}), nullptr);
 
   std::ostringstream output;
-  output << shift << ' ' << reduce << ' ' << accept;
+  output << *shift << ' ' << *reduce << ' ' << *accept;
   EXPECT_EQ(output.str(),
             "S" + std::to_string(std::to_underlying(after_a)) + " R2 ACC");
 }
@@ -134,7 +137,9 @@ TEST(ActionTable, CanCopyAndMoveBuiltTable) {
   const auto copy = *built;
   const auto moved = std::move(*built);
   const ActionKey key{StateId{0}, "a"};
-  EXPECT_EQ(copy.GetParseAction(key), moved.GetParseAction(key));
+  ASSERT_NE(copy.FindAction(key), nullptr);
+  ASSERT_NE(moved.FindAction(key), nullptr);
+  EXPECT_EQ(*copy.FindAction(key), *moved.FindAction(key));
 }
 
 }  // namespace

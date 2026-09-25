@@ -5,11 +5,11 @@
 #include <vector>
 
 #include "format.hpp"
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/output.hpp"
 
 namespace lrk_parser::details {
 
-std::ostream& operator<<(std::ostream& os, const UsetT<StringT>& set) {
+std::ostream& operator<<(std::ostream& os, const PrefixSet& set) {
   std::vector<StringT> words{set.begin(), set.end()};
   std::ranges::sort(words, output::WordLess);
   os << '{';

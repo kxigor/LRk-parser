@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/output.hpp"
 #include "lrk_parser/parser.hpp"
 #include "lrk_parser/text_grammar.hpp"
 

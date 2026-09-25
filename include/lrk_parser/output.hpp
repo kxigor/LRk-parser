@@ -7,16 +7,16 @@
 #include <sstream>
 #include <utility>
 
-#include "action_table.hpp"
-#include "canonical_collection.hpp"
 #include "config.hpp"
-#include "first_k.hpp"
-#include "goto_table.hpp"
+#include "details/action_table.hpp"
+#include "details/canonical_collection.hpp"
+#include "details/first_k.hpp"
+#include "details/goto_table.hpp"
+#include "details/situation.hpp"
+#include "details/tables_base.hpp"
 #include "grammar.hpp"
 #include "parser.hpp"
 #include "rule.hpp"
-#include "situation.hpp"
-#include "tables_base.hpp"
 #include "text_grammar.hpp"
 
 namespace lrk_parser {
@@ -30,7 +30,7 @@ std::ostream& operator<<(std::ostream& os, const PreparedRule& rule);
 std::ostream& operator<<(std::ostream& os, const PreparedGrammar& grammar);
 std::ostream& operator<<(std::ostream& os, const Situation& sit);
 std::ostream& operator<<(std::ostream& os, const Situations& sits);
-std::ostream& operator<<(std::ostream& os, const UsetT<StringT>& set);
+std::ostream& operator<<(std::ostream& os, const PrefixSet& set);
 std::ostream& operator<<(std::ostream& os, const FirstK& first_k_obj);
 std::ostream& operator<<(std::ostream& os, const TransitionKey& tkey);
 std::ostream& operator<<(std::ostream& os, const TransitionMap& transitions);
@@ -138,9 +138,8 @@ struct std::formatter<lrk_parser::details::Situations>
     : lrk_parser::output::OstreamFormatter<lrk_parser::details::Situations> {};
 
 template <>
-struct std::formatter<lrk_parser::UsetT<lrk_parser::StringT>>
-    : lrk_parser::output::OstreamFormatter<
-          lrk_parser::UsetT<lrk_parser::StringT>> {};
+struct std::formatter<lrk_parser::details::PrefixSet>
+    : lrk_parser::output::OstreamFormatter<lrk_parser::details::PrefixSet> {};
 
 template <>
 struct std::formatter<lrk_parser::details::FirstK>

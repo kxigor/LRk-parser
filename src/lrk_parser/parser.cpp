@@ -4,9 +4,9 @@
 #include <variant>
 #include <vector>
 
-#include "lrk_parser/canonical_collection.hpp"
-#include "lrk_parser/first_k.hpp"
-#include "lrk_parser/tables_base.hpp"
+#include "lrk_parser/details/canonical_collection.hpp"
+#include "lrk_parser/details/first_k.hpp"
+#include "lrk_parser/details/tables_base.hpp"
 
 namespace lrk_parser {
 
@@ -42,11 +42,11 @@ bool Parser::Accepts(StringViewT word) const {
   while (true) {
     const details::ActionKey key{stack.back(),
                                  StringT{word.substr(cursor, k_)}};
-    if (!action_table_.HasParseAction(key)) {
+    const auto* action = action_table_.FindAction(key);
+    if (action == nullptr) {
       return false;
     }
-    const auto& action = action_table_.GetParseAction(key).value;
-    if (const auto* shift = std::get_if<details::Shift>(&action)) {
+    if (const auto* shift = std::get_if<details::Shift>(&action->value)) {
       if (cursor == word.size()) {
         return false;
       }
@@ -54,7 +54,7 @@ bool Parser::Accepts(StringViewT word) const {
       ++cursor;
       continue;
     }
-    if (const auto* reduce = std::get_if<details::Reduce>(&action)) {
+    if (const auto* reduce = std::get_if<details::Reduce>(&action->value)) {
       if (!ApplyReduction(stack, reduce->rule)) {
         return false;
       }
@@ -72,10 +72,11 @@ bool Parser::ApplyReduction(std::vector<details::StateId>& stack,
   }
   stack.resize(stack.size() - rule.rhs.size());
   const details::TransitionKey transition{stack.back(), rule.lhs};
-  if (!goto_table_.HasGotoState(transition)) {
+  const auto* target = goto_table_.FindState(transition);
+  if (target == nullptr) {
     return false;
   }
-  stack.push_back(goto_table_.GetGotoState(transition));
+  stack.push_back(*target);
   return true;
 }
 

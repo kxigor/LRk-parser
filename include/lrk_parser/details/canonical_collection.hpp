@@ -3,8 +3,8 @@
 #include <utility>
 #include <vector>
 
-#include "details/prepared_grammar.hpp"
 #include "first_k.hpp"
+#include "prepared_grammar.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
 

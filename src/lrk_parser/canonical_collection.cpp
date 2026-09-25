@@ -1,4 +1,4 @@
-#include "lrk_parser/canonical_collection.hpp"
+#include "lrk_parser/details/canonical_collection.hpp"
 
 #include <algorithm>
 #include <deque>

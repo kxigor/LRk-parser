@@ -1,10 +1,13 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
+#include <unordered_map>
+#include <utility>
 #include <variant>
 
-#include "config.hpp"
-#include "details/ids.hpp"
+#include "ids.hpp"
+#include "lrk_parser/config.hpp"
 
 namespace lrk_parser::details {
 
@@ -29,7 +32,8 @@ struct TransitionKeyHash {
   }
 };
 
-using TransitionMap = UmapT<TransitionKey, StateId, TransitionKeyHash>;
+using TransitionMap =
+    std::unordered_map<TransitionKey, StateId, TransitionKeyHash>;
 
 struct Shift {
   bool operator==(const Shift&) const = default;

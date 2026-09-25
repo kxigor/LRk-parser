@@ -1,12 +1,13 @@
+#include "lrk_parser/output.hpp"
+
 #include <gtest/gtest.h>
 
 #include <format>
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <utility>
-
-#include "lrk_parser/output_helpers.hpp"
 
 namespace lrk_parser {
 namespace {
@@ -20,7 +21,7 @@ std::string Render(const T& value) {
 }
 
 TEST(Output, SortsUnorderedSetsAndTransitions) {
-  const UsetT<StringT> words{"ba", "", "b", "a"};
+  const std::unordered_set<StringT> words{"ba", "", "b", "a"};
   EXPECT_EQ(Render(words), "{ε, \"a\", \"b\", \"ba\"}");
 
   details::TransitionMap transitions;
@@ -112,7 +113,7 @@ TEST(Output, FormatAndStreamProduceTheSameText) {
 
   const CompileError error{InvalidLookahead{0}};
   EXPECT_EQ(std::format("{}", error), Render(error));
-  const UsetT<StringT> words{"b", "a"};
+  const std::unordered_set<StringT> words{"b", "a"};
   EXPECT_EQ(std::format("{}", words), Render(words));
 
   std::string written;

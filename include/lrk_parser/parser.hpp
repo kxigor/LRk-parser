@@ -6,10 +6,10 @@
 #include <variant>
 #include <vector>
 
-#include "action_table.hpp"
 #include "config.hpp"
+#include "details/action_table.hpp"
+#include "details/goto_table.hpp"
 #include "details/prepared_grammar.hpp"
-#include "goto_table.hpp"
 #include "grammar.hpp"
 
 namespace lrk_parser {

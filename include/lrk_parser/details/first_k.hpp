@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "config.hpp"
-#include "details/prepared_grammar.hpp"
+#include "lrk_parser/config.hpp"
+#include "prepared_grammar.hpp"
 
 namespace lrk_parser::details {
 

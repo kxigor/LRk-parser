@@ -1,8 +1,8 @@
-#include "lrk_parser/goto_table.hpp"
+#include "lrk_parser/details/goto_table.hpp"
 
 #include <utility>
 
-#include "lrk_parser/tables_base.hpp"
+#include "lrk_parser/details/tables_base.hpp"
 
 lrk_parser::details::GotoTable lrk_parser::details::GotoTable::Build(
     const PreparedGrammar& grammar, TransitionMap transitions) {
@@ -19,12 +19,8 @@ lrk_parser::details::GotoTable lrk_parser::details::GotoTable::Build(
 lrk_parser::details::GotoTable::GotoTable(TransitionMap transitions)
     : goto_table_{std::move(transitions)} {}
 
-bool lrk_parser::details::GotoTable::HasGotoState(
-    const TransitionKey& t_key) const {
-  return goto_table_.contains(t_key);
-}
-
-const lrk_parser::details::StateId&
-lrk_parser::details::GotoTable::GetGotoState(const TransitionKey& t_key) const {
-  return goto_table_.at(t_key);
+const lrk_parser::details::StateId* lrk_parser::details::GotoTable::FindState(
+    const TransitionKey& key) const {
+  const auto it = goto_table_.find(key);
+  return it == goto_table_.end() ? nullptr : &it->second;
 }

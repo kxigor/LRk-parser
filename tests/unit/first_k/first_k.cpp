@@ -1,4 +1,4 @@
-#include "lrk_parser/first_k.hpp"
+#include "lrk_parser/details/first_k.hpp"
 
 #include <gtest/gtest.h>
 
@@ -7,7 +7,7 @@
 #include <sstream>
 #include <utility>
 
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/output.hpp"
 
 namespace lrk_parser::details {
 namespace {

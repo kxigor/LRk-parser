@@ -3,7 +3,7 @@
 #include <utility>
 
 #include "format.hpp"
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/output.hpp"
 
 namespace lrk_parser {
 

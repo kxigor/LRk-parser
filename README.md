@@ -20,7 +20,7 @@
 | **`CMake`** | 3.25 | Система сборки |
 | **`C++`** | C++23 (GCC/Clang) | |
 | **`Ninja`** | | Генератор сборки |
-| **`Google Test`** | (Включен в проект) | Модульное тестирование |
+| **`Google Test`** | | Модульное тестирование |
 | **`clang-format`** | 19 | Автоматическое форматирование кода |
 | **`clang-tidy`** | 19 | Статический анализ кода |
 | **`lcov` / `gcov`** | | Инструменты для анализа покрытия кода |
@@ -54,8 +54,6 @@ ctest --preset dev-debug-asan
 
 #### Покрытие Кода (Coverage)
 
-Проект настроен так, чтобы **покрытие кода (Code Coverage)** не опускалось **ниже 95%**.
-
 Для генерации отчета о покрытии:
 
 1.**Сконфигурируйте и соберите проект, используя пресет `dev-debug-coverage`:**
@@ -80,13 +78,9 @@ build/dev-debug-coverage/coverage_report/index.html
 
 -----
 
-## Покрытие 98.5 %
-
-![покрытие](assets/coverage.png)
-
 ## Использование Библиотеки
 
-Основной класс для взаимодействия — `lrk_parser::Parser`, определённый в `include/lrk_parser/parser.hpp`.
+Основной интерфейс — `lrk_parser::Parser` из `lrk_parser/parser.hpp`. Построение грамматики объявлено в `lrk_parser/grammar.hpp`, текстовый адаптер — в `lrk_parser/text_grammar.hpp`.
 
 ### Основной Интерфейс
 
@@ -108,10 +102,14 @@ std::size_t Lookahead() const;
 int main() {
   const auto grammar = lrk_parser::ParseGrammar(
       "ab", "S", {"S->aSb", "S->"}, 'S');
-  if (!grammar) return 1;
+  if (!grammar) {
+    return 1;
+  }
 
   auto parser = lrk_parser::Parser::Compile(*grammar, 1);
-  if (!parser) return 1;
+  if (!parser) {
+    return 1;
+  }
   return parser->Accepts("aabb") ? 0 : 1;
 }
 ```
@@ -130,6 +128,19 @@ auto grammar = lrk_parser::MakeGrammar({
 Обе фабрики возвращают `std::expected`. `GrammarError` содержит причину, символ и, если ошибка относится к правилу, его индекс с нуля. У `ParseGrammar` ошибка — `std::variant<RuleSyntaxError, GrammarError>`; синтаксическая ошибка указывает индекс строки с неверной записью `S->rhs`.
 
 `Parser::Compile` создаёт готовый парсер или возвращает `CompileError`: недопустимый `k=0` либо конфликт действий. Готовый парсер владеет данными для распознавания и не зависит от времени жизни `Grammar`.
+
+`lrk_parser/output.hpp` добавляет вывод грамматики, парсера и ошибок через поток или `std::format`:
+
+```cpp
+#include <format>
+#include <iostream>
+#include "lrk_parser/output.hpp"
+
+std::cout << *parser;
+const auto description = std::format("{}", *parser);
+```
+
+Внутренние стадии FIRST, каноническая коллекция и таблицы находятся в `lrk_parser/details/` и могут исследоваться отдельно от готового парсера.
 
 `Grammar` владеет данными и предоставляет доступ только для чтения. Проверяются алфавиты, стартовый символ и правила, включая наличие продукций у используемых нетерминалов. Порядок и дубликаты правил сохраняются. Служебное стартовое правило добавляется только во внутреннее представление парсера.
 

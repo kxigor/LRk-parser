@@ -1,4 +1,4 @@
-#include "lrk_parser/canonical_collection.hpp"
+#include "lrk_parser/details/canonical_collection.hpp"
 
 #include <gtest/gtest.h>
 
@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "lrk_parser/output_helpers.hpp"
+#include "lrk_parser/output.hpp"
 
 namespace lrk_parser::details {
 namespace {

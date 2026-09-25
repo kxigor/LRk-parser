@@ -3,10 +3,11 @@
 #include <cstddef>
 #include <expected>
 #include <iosfwd>
+#include <unordered_map>
 
 #include "canonical_collection.hpp"
-#include "details/prepared_grammar.hpp"
 #include "first_k.hpp"
+#include "prepared_grammar.hpp"
 #include "situation.hpp"
 #include "tables_base.hpp"
 
@@ -36,11 +37,12 @@ class ActionTable {
 
   friend std::ostream& operator<<(std::ostream& os, const ActionTable& table);
 
-  [[nodiscard]] bool HasParseAction(const ActionKey& key) const;
-  [[nodiscard]] const Action& GetParseAction(const ActionKey& key) const;
+  [[nodiscard]] const Action* FindAction(const ActionKey& key) const;
 
  private:
-  UmapT<ActionKey, Action, ActionKeyHash> action_table_;
+  class Builder;
+
+  std::unordered_map<ActionKey, Action, ActionKeyHash> action_table_;
 };
 
 }  // namespace lrk_parser::details

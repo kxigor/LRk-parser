@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <vector>
 
-#include "config.hpp"
-#include "details/ids.hpp"
+#include "ids.hpp"
+#include "lrk_parser/config.hpp"
 
 namespace lrk_parser::details {
 

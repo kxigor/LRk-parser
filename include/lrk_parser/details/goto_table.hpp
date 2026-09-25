@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-#include "details/prepared_grammar.hpp"
+#include "prepared_grammar.hpp"
 #include "tables_base.hpp"
 
 namespace lrk_parser::details {
@@ -15,9 +15,7 @@ class GotoTable {
 
   friend std::ostream& operator<<(std::ostream& os, const GotoTable& table);
 
-  [[nodiscard]] bool HasGotoState(const TransitionKey& t_key) const;
-
-  [[nodiscard]] const StateId& GetGotoState(const TransitionKey& t_key) const;
+  [[nodiscard]] const StateId* FindState(const TransitionKey& key) const;
 
  private:
   explicit GotoTable(TransitionMap transitions);

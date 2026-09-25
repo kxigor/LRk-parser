@@ -1,4 +1,4 @@
-#include "lrk_parser/first_k.hpp"
+#include "lrk_parser/details/first_k.hpp"
 
 namespace lrk_parser::details {
 namespace {
