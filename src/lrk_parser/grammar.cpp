@@ -4,7 +4,7 @@
 
 namespace lrk_parser {
 
-std::expected<Grammar, GrammarError> MakeGrammar(GrammarSpec spec) {
+std::expected<Grammar, GrammarError> Grammar::FromSpec(GrammarSpec spec) {
   for (CharT symbol : spec.terminals) {
     if (spec.nonterminals.contains(symbol)) {
       return std::unexpected{GrammarError{

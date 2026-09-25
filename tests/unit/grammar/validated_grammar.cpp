@@ -12,7 +12,7 @@ namespace {
 TEST(ValidatedGrammar, PreservesRulesWithoutAugmentationOrNormalization) {
   const GrammarSpec spec{
       "a \t", "SA", {{'S', " A\t"}, {'A', "a"}, {'A', ""}, {'A', "a"}}, 'S'};
-  const auto result = MakeGrammar(spec);
+  const auto result = Grammar::FromSpec(spec);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->Terminals(), spec.terminals);
@@ -24,7 +24,7 @@ TEST(ValidatedGrammar, PreservesRulesWithoutAugmentationOrNormalization) {
 TEST(ValidatedGrammar, OwnsInputAfterMutationAndDestruction) {
   const auto result = [] {
     GrammarSpec spec{"a", "S", {{'S', "a"}}, 'S'};
-    auto grammar = MakeGrammar(spec);
+    auto grammar = Grammar::FromSpec(spec);
     spec.terminals = "b";
     spec.nonterminals = "B";
     spec.rules[0] = {'B', "b"};
@@ -41,7 +41,7 @@ TEST(ValidatedGrammar, OwnsInputAfterMutationAndDestruction) {
 }
 
 TEST(ValidatedGrammar, AllowsEmptyTerminalAlphabetAndEpsilon) {
-  const auto result = MakeGrammar({"", "S", {{'S', ""}}, 'S'});
+  const auto result = Grammar::FromSpec({"", "S", {{'S', ""}}, 'S'});
 
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(result->Rules().size(), 1);
@@ -49,32 +49,32 @@ TEST(ValidatedGrammar, AllowsEmptyTerminalAlphabetAndEpsilon) {
 }
 
 TEST(ValidatedGrammar, AllowsUnusedNonterminalWithoutProduction) {
-  EXPECT_TRUE(MakeGrammar({"a", "SA", {{'S', "a"}}, 'S'}).has_value());
+  EXPECT_TRUE(Grammar::FromSpec({"a", "SA", {{'S', "a"}}, 'S'}).has_value());
 }
 
 TEST(ValidatedGrammar, PreservesUnreachableAndNonproductiveRules) {
   const GrammarSpec spec{
       "ab", "SAB", {{'S', "aS"}, {'A', "A"}, {'B', "b"}, {'B', "b"}}, 'S'};
-  const auto result = MakeGrammar(spec);
+  const auto result = Grammar::FromSpec(spec);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_TRUE(std::ranges::equal(result->Rules(), spec.rules));
 }
 
 TEST(ValidatedGrammar, AllowsAtSignInEitherAlphabet) {
-  EXPECT_TRUE(MakeGrammar({"@", "S", {{'S', "@"}}, 'S'}).has_value());
-  EXPECT_TRUE(MakeGrammar({"a", "@", {{'@', "a"}}, '@'}).has_value());
+  EXPECT_TRUE(Grammar::FromSpec({"@", "S", {{'S', "@"}}, 'S'}).has_value());
+  EXPECT_TRUE(Grammar::FromSpec({"a", "@", {{'@', "a"}}, '@'}).has_value());
 }
 
 TEST(ValidatedGrammar, AllowsNullAndHighBitBytesInEitherAlphabet) {
   const StringT bytes{'\0', static_cast<CharT>(0xFF)};
-  const auto terminals = MakeGrammar({bytes, "S", {{'S', bytes}}, 'S'});
+  const auto terminals = Grammar::FromSpec({bytes, "S", {{'S', bytes}}, 'S'});
 
   ASSERT_TRUE(terminals.has_value());
   EXPECT_EQ(terminals->Terminals(), bytes);
   EXPECT_EQ(terminals->Rules()[0].rhs, bytes);
 
-  const auto nonterminals = MakeGrammar(
+  const auto nonterminals = Grammar::FromSpec(
       {"a", bytes, {{'\0', bytes.substr(1)}, {bytes[1], "a"}}, '\0'});
 
   ASSERT_TRUE(nonterminals.has_value());
@@ -83,7 +83,7 @@ TEST(ValidatedGrammar, AllowsNullAndHighBitBytesInEitherAlphabet) {
 }
 
 TEST(ValidatedGrammar, RejectsOverlappingAlphabets) {
-  const auto result = MakeGrammar({"aS", "S", {{'S', "a"}}, 'S'});
+  const auto result = Grammar::FromSpec({"aS", "S", {{'S', "a"}}, 'S'});
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, GrammarErrorKind::OverlappingAlphabets);
@@ -93,7 +93,7 @@ TEST(ValidatedGrammar, RejectsOverlappingAlphabets) {
 
 TEST(ValidatedGrammar, RejectsTerminalOrUndeclaredStart) {
   for (CharT start : {'a', 'X'}) {
-    const auto result = MakeGrammar({"a", "S", {{'S', "a"}}, start});
+    const auto result = Grammar::FromSpec({"a", "S", {{'S', "a"}}, start});
 
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error().kind, GrammarErrorKind::InvalidStart);
@@ -103,7 +103,7 @@ TEST(ValidatedGrammar, RejectsTerminalOrUndeclaredStart) {
 }
 
 TEST(ValidatedGrammar, RejectsEmptyNonterminalAlphabet) {
-  const auto result = MakeGrammar({"", "", {}, 'S'});
+  const auto result = Grammar::FromSpec({"", "", {}, 'S'});
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, GrammarErrorKind::InvalidStart);
@@ -112,7 +112,7 @@ TEST(ValidatedGrammar, RejectsEmptyNonterminalAlphabet) {
 TEST(ValidatedGrammar, RejectsStartWithoutProduction) {
   for (const auto& rules :
        {std::vector<Rule>{}, std::vector<Rule>{{'A', "a"}}}) {
-    const auto result = MakeGrammar({"a", "SA", rules, 'S'});
+    const auto result = Grammar::FromSpec({"a", "SA", rules, 'S'});
 
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error().kind, GrammarErrorKind::MissingProduction);
@@ -123,7 +123,8 @@ TEST(ValidatedGrammar, RejectsStartWithoutProduction) {
 
 TEST(ValidatedGrammar, RejectsTerminalOrUndeclaredLhs) {
   for (CharT lhs : {'a', 'X'}) {
-    const auto result = MakeGrammar({"a", "S", {{'S', "a"}, {lhs, "a"}}, 'S'});
+    const auto result =
+        Grammar::FromSpec({"a", "S", {{'S', "a"}, {lhs, "a"}}, 'S'});
 
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error().kind, GrammarErrorKind::InvalidLhs);
@@ -134,8 +135,8 @@ TEST(ValidatedGrammar, RejectsTerminalOrUndeclaredLhs) {
 
 TEST(ValidatedGrammar, RejectsUnknownRhsIncludingUndeclaredWhitespace) {
   for (CharT symbol : {'X', ' ', '\0', static_cast<CharT>(0xFF)}) {
-    const auto result =
-        MakeGrammar({"a", "S", {{'S', "a"}, {'S', StringT{'a', symbol}}}, 'S'});
+    const auto result = Grammar::FromSpec(
+        {"a", "S", {{'S', "a"}, {'S', StringT{'a', symbol}}}, 'S'});
 
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error().kind, GrammarErrorKind::UnknownRhsSymbol);
@@ -145,7 +146,8 @@ TEST(ValidatedGrammar, RejectsUnknownRhsIncludingUndeclaredWhitespace) {
 }
 
 TEST(ValidatedGrammar, RejectsReferencedNonterminalWithoutProduction) {
-  const auto result = MakeGrammar({"a", "SA", {{'S', "a"}, {'S', "aA"}}, 'S'});
+  const auto result =
+      Grammar::FromSpec({"a", "SA", {{'S', "a"}, {'S', "aA"}}, 'S'});
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, GrammarErrorKind::MissingProduction);
@@ -154,7 +156,8 @@ TEST(ValidatedGrammar, RejectsReferencedNonterminalWithoutProduction) {
 }
 
 TEST(ValidatedGrammar, ChecksReferencesInUnreachableRules) {
-  const auto result = MakeGrammar({"a", "SAB", {{'S', "a"}, {'B', "A"}}, 'S'});
+  const auto result =
+      Grammar::FromSpec({"a", "SAB", {{'S', "a"}, {'B', "A"}}, 'S'});
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, GrammarErrorKind::MissingProduction);

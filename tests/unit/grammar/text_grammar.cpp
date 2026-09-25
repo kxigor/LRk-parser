@@ -1,5 +1,3 @@
-#include "lrk_parser/text_grammar.hpp"
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -7,11 +5,13 @@
 #include <variant>
 #include <vector>
 
+#include "lrk_parser/grammar.hpp"
+
 namespace lrk_parser {
 namespace {
 
 TEST(TextGrammar, ParsesRulesAndRemovesAsciiWhitespace) {
-  const auto result = ParseGrammar(
+  const auto result = Grammar::FromTextRules(
       "ab", "SA", {" \tS \n-\r> A a\v", "A -> b\f", " A -> "}, 'S');
 
   ASSERT_TRUE(result.has_value());
@@ -23,7 +23,8 @@ TEST(TextGrammar, ParsesRulesAndRemovesAsciiWhitespace) {
 TEST(TextGrammar, ReportsMalformedRuleIndex) {
   for (const StringT invalid : {"", "S", "S-", "S>a", "AS->a", "S=>a"}) {
     SCOPED_TRACE(invalid);
-    const auto result = ParseGrammar("a", "S", {"S->a", invalid}, 'S');
+    const auto result =
+        Grammar::FromTextRules("a", "S", {"S->a", invalid}, 'S');
 
     ASSERT_FALSE(result.has_value());
     const auto* error = std::get_if<RuleSyntaxError>(&result.error());
@@ -33,7 +34,8 @@ TEST(TextGrammar, ReportsMalformedRuleIndex) {
 }
 
 TEST(TextGrammar, PreservesValidationErrorAndRuleIndex) {
-  const auto result = ParseGrammar("a", "S", {" S -> a ", "S -> X"}, 'S');
+  const auto result =
+      Grammar::FromTextRules("a", "S", {" S -> a ", "S -> X"}, 'S');
 
   ASSERT_FALSE(result.has_value());
   const auto* error = std::get_if<GrammarError>(&result.error());
@@ -45,15 +47,16 @@ TEST(TextGrammar, PreservesValidationErrorAndRuleIndex) {
 
 TEST(TextGrammar, ValidatesStartAndMissingProductions) {
   for (const auto& result :
-       {ParseGrammar("a", "S", {"S->a"}, 'X'), ParseGrammar("a", "S", {}, 'S'),
-        ParseGrammar("a", "SA", {"S->A"}, 'S')}) {
+       {Grammar::FromTextRules("a", "S", {"S->a"}, 'X'),
+        Grammar::FromTextRules("a", "S", {}, 'S'),
+        Grammar::FromTextRules("a", "SA", {"S->A"}, 'S')}) {
     ASSERT_FALSE(result.has_value());
     EXPECT_TRUE(std::holds_alternative<GrammarError>(result.error()));
   }
 }
 
 TEST(TextGrammar, PreservesDuplicateRules) {
-  const auto result = ParseGrammar("a", "S", {"S->a", "S -> a"}, 'S');
+  const auto result = Grammar::FromTextRules("a", "S", {"S->a", "S -> a"}, 'S');
 
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(result->Rules().size(), 2);
@@ -61,8 +64,8 @@ TEST(TextGrammar, PreservesDuplicateRules) {
 }
 
 TEST(TextGrammar, AllowsArrowCharactersAsSymbols) {
-  const auto result = ParseGrammar("->", "S", {"S->->"}, 'S');
-  const auto lhs = ParseGrammar("a", "-", {"-->a"}, '-');
+  const auto result = Grammar::FromTextRules("->", "S", {"S->->"}, 'S');
+  const auto lhs = Grammar::FromTextRules("a", "-", {"-->a"}, '-');
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->Rules()[0].rhs, "->");
@@ -72,7 +75,7 @@ TEST(TextGrammar, AllowsArrowCharactersAsSymbols) {
 
 TEST(TextGrammar, PreservesNullAndHighBitBytes) {
   const StringT bytes{'\0', static_cast<CharT>(0xFF)};
-  const auto result = ParseGrammar(bytes, "@", {"@->" + bytes}, '@');
+  const auto result = Grammar::FromTextRules(bytes, "@", {"@->" + bytes}, '@');
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->Rules()[0], (Rule{'@', bytes}));

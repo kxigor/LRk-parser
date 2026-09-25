@@ -11,7 +11,8 @@ namespace lrk_parser::details {
 namespace {
 
 TEST(PreparedGrammar, AugmentsWithoutChangingUserGrammar) {
-  const auto grammar = MakeGrammar({"a", "@A", {{'@', "A"}, {'A', "a"}}, '@'});
+  const auto grammar =
+      Grammar::FromSpec({"a", "@A", {{'@', "A"}, {'A', "a"}}, '@'});
   ASSERT_TRUE(grammar.has_value());
   const PreparedGrammar prepared{*grammar};
 
@@ -26,7 +27,7 @@ TEST(PreparedGrammar, AugmentsWithoutChangingUserGrammar) {
 }
 
 TEST(PreparedGrammar, IndexesDuplicateRulesSeparatelyInInputOrder) {
-  const auto grammar = MakeGrammar(
+  const auto grammar = Grammar::FromSpec(
       {"ab", "SAB", {{'S', "A"}, {'A', "a"}, {'S', "b"}, {'A', "a"}}, 'S'});
   ASSERT_TRUE(grammar.has_value());
   const PreparedGrammar prepared{*grammar};
@@ -45,7 +46,8 @@ TEST(PreparedGrammar, IndexesDuplicateRulesSeparatelyInInputOrder) {
 
 TEST(PreparedGrammar, OwnsRulesAfterSourceDestruction) {
   const auto prepared = [] {
-    const auto grammar = MakeGrammar({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'});
+    const auto grammar =
+        Grammar::FromSpec({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'});
     return PreparedGrammar{grammar.value()};
   }();
 
@@ -57,8 +59,9 @@ TEST(PreparedGrammar, OwnsRulesAfterSourceDestruction) {
 
 TEST(PreparedGrammar, ByteIdsDoNotDependOnAlphabetOrderOrDuplicates) {
   const auto first =
-      MakeGrammar({"baa", "ASS", {{'S', "bAa"}, {'A', ""}}, 'S'});
-  const auto second = MakeGrammar({"ab", "SA", {{'S', "bAa"}, {'A', ""}}, 'S'});
+      Grammar::FromSpec({"baa", "ASS", {{'S', "bAa"}, {'A', ""}}, 'S'});
+  const auto second =
+      Grammar::FromSpec({"ab", "SA", {{'S', "bAa"}, {'A', ""}}, 'S'});
   ASSERT_TRUE(first.has_value());
   ASSERT_TRUE(second.has_value());
   const PreparedGrammar a{*first};

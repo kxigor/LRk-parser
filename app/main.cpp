@@ -1,12 +1,12 @@
 #include <iostream>
 
+#include "lrk_parser/grammar.hpp"
 #include "lrk_parser/output.hpp"
 #include "lrk_parser/parser.hpp"
-#include "lrk_parser/text_grammar.hpp"
 
 int main() {
   const auto grammar =
-      lrk_parser::ParseGrammar("ab", "S", {"S->aSb", "S->"}, 'S');
+      lrk_parser::Grammar::FromTextRules("ab", "S", {"S->aSb", "S->"}, 'S');
   if (!grammar) {
     std::cerr << grammar.error() << '\n';
     return 1;

@@ -1,11 +1,11 @@
-#include "lrk_parser/text_grammar.hpp"
-
-#include <string_view>
+#include <string>
 #include <utility>
+
+#include "lrk_parser/grammar.hpp"
 
 namespace lrk_parser {
 
-std::expected<Grammar, TextGrammarError> ParseGrammar(
+std::expected<Grammar, TextGrammarError> Grammar::FromTextRules(
     StringT terminals, StringT nonterminals, std::vector<StringT> rules,
     CharT start) {
   GrammarSpec spec{std::move(terminals), std::move(nonterminals), {}, start};
@@ -20,7 +20,7 @@ std::expected<Grammar, TextGrammarError> ParseGrammar(
     }
     spec.rules.push_back({text[0], text.substr(3)});
   }
-  auto grammar = MakeGrammar(std::move(spec));
+  auto grammar = FromSpec(std::move(spec));
   if (!grammar) {
     return std::unexpected{grammar.error()};
   }

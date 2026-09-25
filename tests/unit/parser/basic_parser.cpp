@@ -4,8 +4,8 @@
 #include <utility>
 #include <variant>
 
+#include "lrk_parser/grammar.hpp"
 #include "lrk_parser/parser.hpp"
-#include "lrk_parser/text_grammar.hpp"
 
 namespace lrk_parser {
 namespace {
@@ -14,7 +14,7 @@ static_assert(!std::is_default_constructible_v<Parser>);
 
 TEST(Parser, CompilesReadyLR1Parser) {
   const auto grammar =
-      ParseGrammar("id=", "E", {"E->id=E", "E->id"}, 'E').value();
+      Grammar::FromTextRules("id=", "E", {"E->id=E", "E->id"}, 'E').value();
   const auto parser = Parser::Compile(grammar, 1);
   ASSERT_TRUE(parser.has_value());
   EXPECT_EQ(parser->Lookahead(), 1);
@@ -25,7 +25,7 @@ TEST(Parser, CompilesReadyLR1Parser) {
 }
 
 TEST(Parser, RejectsZeroLookahead) {
-  const auto grammar = ParseGrammar("a", "S", {"S->a"}, 'S').value();
+  const auto grammar = Grammar::FromTextRules("a", "S", {"S->a"}, 'S').value();
   const auto result = Parser::Compile(grammar, 0);
   ASSERT_FALSE(result.has_value());
   ASSERT_TRUE(std::holds_alternative<InvalidLookahead>(result.error()));
@@ -35,10 +35,11 @@ TEST(Parser, RejectsZeroLookahead) {
 TEST(Parser, ReportsConflictUntilLookaheadIsSufficient) {
   for (std::size_t required : {2U, 3U}) {
     const auto grammar =
-        ParseGrammar("a", "SAB",
-                     {"S->A" + StringT(required, 'a'),
-                      "S->B" + StringT(required - 1, 'a'), "A->a", "B->a"},
-                     'S')
+        Grammar::FromTextRules(
+            "a", "SAB",
+            {"S->A" + StringT(required, 'a'),
+             "S->B" + StringT(required - 1, 'a'), "A->a", "B->a"},
+            'S')
             .value();
     for (std::size_t smaller = 1; smaller < required; ++smaller) {
       const auto result = Parser::Compile(grammar, smaller);
@@ -58,7 +59,8 @@ TEST(Parser, ReportsConflictUntilLookaheadIsSufficient) {
 
 TEST(Parser, OwnsCompiledDataAndSupportsCopyAndMove) {
   auto compiled = [] {
-    const auto grammar = ParseGrammar("a", "S", {"S->aS", "S->"}, 'S').value();
+    const auto grammar =
+        Grammar::FromTextRules("a", "S", {"S->aS", "S->"}, 'S').value();
     return Parser::Compile(grammar, 2);
   }();
   ASSERT_TRUE(compiled.has_value());

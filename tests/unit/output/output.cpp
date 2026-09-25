@@ -40,28 +40,30 @@ TEST(Output, SortsUnorderedSetsAndTransitions) {
 
 TEST(Output, EscapesSymbolsAndPrintsGrammarErrors) {
   const auto grammar =
-      MakeGrammar(GrammarSpec{{'b', '\0', static_cast<CharT>(0xff), 'a'},
-                              "S",
-                              {{'S', StringT{'\0', 'a'}}},
-                              'S'})
+      Grammar::FromSpec(GrammarSpec{{'b', '\0', static_cast<CharT>(0xff), 'a'},
+                                    "S",
+                                    {{'S', StringT{'\0', 'a'}}},
+                                    'S'})
           .value();
   const auto printed = Render(grammar);
   EXPECT_NE(printed.find("Terminals: {\\x00, a, b, \\xFF}"), std::string::npos);
   EXPECT_NE(printed.find("S -> \\x00a"), std::string::npos);
 
-  const auto invalid = MakeGrammar(GrammarSpec{"a", "S", {{'S', "b"}}, 'S'});
+  const auto invalid =
+      Grammar::FromSpec(GrammarSpec{"a", "S", {{'S', "b"}}, 'S'});
   ASSERT_FALSE(invalid.has_value());
   EXPECT_EQ(Render(invalid.error()),
             "Rule uses an unknown symbol: b (rule #0)");
 
-  const auto syntax = ParseGrammar("a", "S", {"broken"}, 'S');
+  const auto syntax = Grammar::FromTextRules("a", "S", {"broken"}, 'S');
   ASSERT_FALSE(syntax.has_value());
   EXPECT_EQ(Render(syntax.error()), "Invalid rule syntax (rule #0)");
 }
 
 TEST(Output, ParserAndConflictRetainRuleDetailsAfterGrammarDies) {
   const auto parser = [] {
-    const auto grammar = ParseGrammar("ab", "S", {"S->a", "S->b"}, 'S').value();
+    const auto grammar =
+        Grammar::FromTextRules("ab", "S", {"S->a", "S->b"}, 'S').value();
     return Parser::Compile(grammar, 1).value();
   }();
   const auto printed = Render(parser);
@@ -75,7 +77,8 @@ TEST(Output, ParserAndConflictRetainRuleDetailsAfterGrammarDies) {
   EXPECT_LT(a, b);
 
   const auto conflict = [] {
-    const auto grammar = ParseGrammar("a", "S", {"S->a", "S->a"}, 'S').value();
+    const auto grammar =
+        Grammar::FromTextRules("a", "S", {"S->a", "S->a"}, 'S').value();
     auto compiled = Parser::Compile(grammar, 1);
     EXPECT_FALSE(compiled.has_value());
     return std::move(compiled.error());
@@ -93,7 +96,8 @@ TEST(Output, FormatAndStreamProduceTheSameText) {
   EXPECT_EQ(std::format("{:04}", details::StateId{7}), "0007");
   EXPECT_EQ(std::format("{}", details::kAugmentedStart), "<start>");
 
-  const auto grammar = ParseGrammar("ab", "S", {"S->a", "S->b"}, 'S').value();
+  const auto grammar =
+      Grammar::FromTextRules("ab", "S", {"S->a", "S->b"}, 'S').value();
   const details::PreparedGrammar prepared{grammar};
   const auto first = details::FirstK::Compute(prepared, 1);
   const auto collection = details::CanonicalCollection::Build(prepared, first);

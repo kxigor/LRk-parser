@@ -17,7 +17,6 @@
 #include "grammar.hpp"
 #include "parser.hpp"
 #include "rule.hpp"
-#include "text_grammar.hpp"
 
 namespace lrk_parser {
 std::ostream& operator<<(std::ostream& os, const Rule& rule);

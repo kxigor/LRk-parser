@@ -8,7 +8,7 @@
 #include "lrk_parser/details/canonical_collection.hpp"
 #include "lrk_parser/details/first_k.hpp"
 #include "lrk_parser/details/goto_table.hpp"
-#include "lrk_parser/text_grammar.hpp"
+#include "lrk_parser/grammar.hpp"
 
 using namespace lrk_parser;
 using namespace lrk_parser::details;
@@ -21,7 +21,7 @@ class CanonicalCollectionBaseTest : public ::testing::Test {
     CharT start = 'S';
     std::vector<StringT> rules{"S->A", "A->a"};
     grammar_ = std::make_unique<PreparedGrammar>(
-        ParseGrammar(terminals, nonterminals, rules, start).value());
+        Grammar::FromTextRules(terminals, nonterminals, rules, start).value());
     first_k_ = std::make_unique<FirstK>(FirstK::Compute(*grammar_, 1));
   }
 

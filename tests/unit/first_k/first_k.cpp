@@ -17,15 +17,15 @@ const PrefixSet& ForSymbol(const FirstK& first, CharT symbol) {
 }
 
 TEST(FirstK, NullableAlternativesAtK1) {
-  const PreparedGrammar grammar{MakeGrammar({"abcd",
-                                             "SAB",
-                                             {{'S', "AB"},
-                                              {'S', "c"},
-                                              {'A', "a"},
-                                              {'A', ""},
-                                              {'B', "b"},
-                                              {'B', ""}},
-                                             'S'})
+  const PreparedGrammar grammar{Grammar::FromSpec({"abcd",
+                                                   "SAB",
+                                                   {{'S', "AB"},
+                                                    {'S', "c"},
+                                                    {'A', "a"},
+                                                    {'A', ""},
+                                                    {'B', "b"},
+                                                    {'B', ""}},
+                                                   'S'})
                                     .value()};
   const auto first = FirstK::Compute(grammar, 1);
 
@@ -41,10 +41,10 @@ TEST(FirstK, NullableAlternativesAtK1) {
 
 TEST(FirstK, NullableChainAtK2) {
   const PreparedGrammar grammar{
-      MakeGrammar({"abcd",
-                   "SAB",
-                   {{'S', "Aa"}, {'A', "Bc"}, {'B', "d"}, {'B', ""}},
-                   'S'})
+      Grammar::FromSpec({"abcd",
+                         "SAB",
+                         {{'S', "Aa"}, {'A', "Bc"}, {'B', "d"}, {'B', ""}},
+                         'S'})
           .value()};
   const auto first = FirstK::Compute(grammar, 2);
 
@@ -55,7 +55,7 @@ TEST(FirstK, NullableChainAtK2) {
 
 TEST(FirstK, SequenceAtK3) {
   const PreparedGrammar grammar{
-      MakeGrammar(
+      Grammar::FromSpec(
           {"ac",
            "SAB",
            {{'S', "ABa"}, {'A', "a"}, {'A', "Bc"}, {'B', "c"}, {'B', ""}},
@@ -68,18 +68,18 @@ TEST(FirstK, SequenceAtK3) {
 }
 
 TEST(FirstK, FullSetsAtK3) {
-  const PreparedGrammar grammar{MakeGrammar({"abcde",
-                                             "SABCD",
-                                             {{'S', "ABC"},
-                                              {'A', "a"},
-                                              {'A', "BD"},
-                                              {'B', "b"},
-                                              {'B', ""},
-                                              {'C', "c"},
-                                              {'C', "De"},
-                                              {'D', "d"},
-                                              {'D', ""}},
-                                             'S'})
+  const PreparedGrammar grammar{Grammar::FromSpec({"abcde",
+                                                   "SABCD",
+                                                   {{'S', "ABC"},
+                                                    {'A', "a"},
+                                                    {'A', "BD"},
+                                                    {'B', "b"},
+                                                    {'B', ""},
+                                                    {'C', "c"},
+                                                    {'C', "De"},
+                                                    {'D', "d"},
+                                                    {'D', ""}},
+                                                   'S'})
                                     .value()};
   const auto first = FirstK::Compute(grammar, 3);
 
@@ -95,7 +95,7 @@ TEST(FirstK, FullSetsAtK3) {
 
 TEST(FirstK, EmptySequenceAndShortLookahead) {
   const PreparedGrammar grammar{
-      MakeGrammar({"abc", "S", {{'S', "a"}, {'S', ""}}, 'S'}).value()};
+      Grammar::FromSpec({"abc", "S", {{'S', "a"}, {'S', ""}}, 'S'}).value()};
   const auto first = FirstK::Compute(grammar, 3);
 
   EXPECT_EQ(first.ForSequence({}), PrefixSet{""});
@@ -107,10 +107,11 @@ TEST(FirstK, EmptySequenceAndShortLookahead) {
 
 TEST(FirstK, EpsilonNonterminalPreservesSequencePrefixes) {
   const PreparedGrammar grammar{
-      MakeGrammar({"ab",
-                   "SAE",
-                   {{'S', "AE"}, {'A', ""}, {'A', "a"}, {'A', "ab"}, {'E', ""}},
-                   'S'})
+      Grammar::FromSpec(
+          {"ab",
+           "SAE",
+           {{'S', "AE"}, {'A', ""}, {'A', "a"}, {'A', "ab"}, {'E', ""}},
+           'S'})
           .value()};
   const auto first = FirstK::Compute(grammar, 3);
   const PrefixSet expected{"", "a", "ab"};
@@ -121,7 +122,7 @@ TEST(FirstK, EpsilonNonterminalPreservesSequencePrefixes) {
 
 TEST(FirstK, NonproductiveLeadingNonterminalProducesNoPrefixes) {
   const PreparedGrammar grammar{
-      MakeGrammar(
+      Grammar::FromSpec(
           {"a", "SAB", {{'S', "AB"}, {'A', "A"}, {'B', "a"}, {'B', ""}}, 'S'})
           .value()};
   const auto first = FirstK::Compute(grammar, 2);
@@ -132,7 +133,7 @@ TEST(FirstK, NonproductiveLeadingNonterminalProducesNoPrefixes) {
 
 TEST(FirstK, TruncatesAndDeduplicatesSequencePrefixes) {
   const PreparedGrammar grammar{
-      MakeGrammar(
+      Grammar::FromSpec(
           {"abcd",
            "SAB",
            {{'S', "AB"}, {'A', "a"}, {'A', "ab"}, {'B', "bc"}, {'B', "bd"}},
@@ -150,7 +151,7 @@ TEST(FirstK, TruncatesAndDeduplicatesSequencePrefixes) {
 
 TEST(FirstK, NullableRecursionConverges) {
   const PreparedGrammar grammar{
-      MakeGrammar(
+      Grammar::FromSpec(
           {"a", "SAB", {{'S', "A"}, {'A', "B"}, {'B', "aA"}, {'B', ""}}, 'S'})
           .value()};
   for (std::size_t k : {1U, 2U, 3U}) {
@@ -171,7 +172,7 @@ TEST(FirstK, RuleAndAlphabetOrderDoNotChangeSets) {
   std::array<std::size_t, 4> order{0, 1, 2, 3};
   const auto rules = spec.rules;
   const auto reference =
-      FirstK::Compute(PreparedGrammar{MakeGrammar(spec).value()}, 3);
+      FirstK::Compute(PreparedGrammar{Grammar::FromSpec(spec).value()}, 3);
   std::ranges::reverse(spec.terminals);
   std::ranges::reverse(spec.nonterminals);
 
@@ -180,7 +181,7 @@ TEST(FirstK, RuleAndAlphabetOrderDoNotChangeSets) {
       spec.rules[i] = rules[order[i]];
     }
     const auto first =
-        FirstK::Compute(PreparedGrammar{MakeGrammar(spec).value()}, 3);
+        FirstK::Compute(PreparedGrammar{Grammar::FromSpec(spec).value()}, 3);
     EXPECT_EQ(first.Sets(), reference.Sets());
   } while (std::next_permutation(order.begin(), order.end()));
 }
@@ -188,11 +189,13 @@ TEST(FirstK, RuleAndAlphabetOrderDoNotChangeSets) {
 TEST(FirstK, ResultsOwnTheirDataAndDoNotMixGrammarsOrLookaheads) {
   const auto first = [] {
     const PreparedGrammar grammar{
-        MakeGrammar({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'}).value()};
+        Grammar::FromSpec({"a", "S", {{'S', "aS"}, {'S', ""}}, 'S'}).value()};
     return FirstK::Compute(grammar, 2);
   }();
   const auto other = FirstK::Compute(
-      PreparedGrammar{MakeGrammar({"b", "S", {{'S', "bbb"}}, 'S'}).value()}, 3);
+      PreparedGrammar{
+          Grammar::FromSpec({"b", "S", {{'S', "bbb"}}, 'S'}).value()},
+      3);
 
   EXPECT_EQ(first.Lookahead(), 2);
   EXPECT_EQ(ForSymbol(first, 'S'), (PrefixSet{"", "a", "aa"}));
@@ -209,7 +212,9 @@ TEST(FirstK, ResultsOwnTheirDataAndDoNotMixGrammarsOrLookaheads) {
 TEST(FirstK, HandlesNullHighBitAndWhitespaceTerminals) {
   const StringT word{'\0', static_cast<CharT>(0xFF), ' '};
   const auto first = FirstK::Compute(
-      PreparedGrammar{MakeGrammar({word, "@", {{'@', word}}, '@'}).value()}, 3);
+      PreparedGrammar{
+          Grammar::FromSpec({word, "@", {{'@', word}}, '@'}).value()},
+      3);
 
   EXPECT_EQ(ForSymbol(first, '@'), PrefixSet{word});
   EXPECT_EQ(first.ForSequence({}, word), PrefixSet{word});
